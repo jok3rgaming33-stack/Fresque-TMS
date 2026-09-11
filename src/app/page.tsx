@@ -35,10 +35,10 @@ export default function Page() {
           </div>
         </div>
         <ol className="mb-8 list-decimal space-y-2 pl-5 text-sm text-slate-700">
-          <li>Filtrez le jeu de cartes (causes, symptômes, préventions).</li>
-          <li>Les cartes sont horizontales : seul l&apos;intitulé s&apos;affiche. Survolez pour voir illustration et descriptif.</li>
-          <li>Glissez-déposez-les sur les zones du personnage.</li>
-          <li>Cliquez sur Vérifier pour valider une combinaison.</li>
+          <li>Placez d&apos;abord tous les <strong>symptômes</strong> aux bons endroits du corps.</li>
+          <li>Une fois validés, les <strong>causes</strong> se déverrouillent, puis les <strong>moyens de prévention</strong>.</li>
+          <li>Seul l&apos;intitulé est visible : survolez une carte pour voir l&apos;illustration et le descriptif.</li>
+          <li>En cas d&apos;erreur de positionnement, la carte clignote et revient dans le jeu.</li>
         </ol>
         <div className="flex justify-center">
           <button

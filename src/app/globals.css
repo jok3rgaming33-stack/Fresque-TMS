@@ -68,14 +68,41 @@ body {
   display: block;
 }
 
+.chip-compact {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 10px;
+  cursor: default;
+}
+
+.chip-compact .detail {
+  display: none;
+}
+
 .zone-hot {
   position: absolute;
-  border: 2px dashed rgb(15 23 42 / 0.28);
+  border: 0;
   border-radius: 18px;
-  background: rgb(255 255 255 / 0.08);
+  background: transparent;
 }
 
 .zone-hot.over {
-  background: rgb(16 185 129 / 0.25);
-  border-color: #059669;
+  background: rgb(16 185 129 / 0.18);
+}
+
+@keyframes chip-blink {
+  0%,
+  100% {
+    outline: 0 solid transparent;
+    filter: brightness(1);
+  }
+  25%,
+  75% {
+    outline: 3px solid #dc2626;
+    filter: brightness(1.35);
+  }
+}
+
+.chip-error {
+  animation: chip-blink 0.28s ease-in-out 4;
 }
