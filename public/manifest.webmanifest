@@ -1,0 +1,13 @@
+{
+  "name": "Fresque TMS",
+  "short_name": "Fresque TMS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121417",
+  "theme_color": "#121417",
+  "lang": "fr",
+  "icons": [
+    { "src": "/perso.jpg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "/perso.jpg", "sizes": "512x512", "type": "image/jpeg" }
+  ]
+}

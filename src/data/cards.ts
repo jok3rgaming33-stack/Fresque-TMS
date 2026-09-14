@@ -1,24 +1,18 @@
-export type CardKind = "cause" | "symptome" | "prevention";
-export type ZoneId = "cou" | "lombaires" | "membres-superieurs" | "membres-inferieurs";
+import type { ZoneId } from "./zones";
 
-export type GameCard = {
+export type Kind = "symptome" | "cause" | "prevention";
+
+export type Card = {
   id: string;
-  kind: CardKind;
+  kind: Kind;
   family: string;
   title: string;
   description: string;
-  image?: string;
+  image: string | null;
   zones: ZoneId[];
 };
 
-export const ZONES: { id: ZoneId; label: string; style: { top: string; left: string; width: string; height: string } }[] = [
-  { id: "cou", label: "Cou / cervicales", style: { top: "11%", left: "38%", width: "24%", height: "8%" } },
-  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "22%", left: "8%", width: "84%", height: "16%" } },
-  { id: "lombaires", label: "Zone lombaire", style: { top: "38%", left: "36%", width: "28%", height: "12%" } },
-  { id: "membres-inferieurs", label: "Membres inférieurs", style: { top: "58%", left: "32%", width: "36%", height: "28%" } },
-];
-
-export const CARDS: GameCard[] = [
+export const CARDS: Card[] = [
   { id: "c-duree", kind: "cause", family: "Organisation du travail", title: "Durée prolongée de l'opération", description: "L'opération dure trop longtemps, sans relâche, ce qui fatigue les muscles et articulations.", image: "/cards/c-duree.jpg", zones: ["lombaires", "membres-superieurs"] },
   { id: "c-delais", kind: "cause", family: "Organisation du travail", title: "Pression sur les délais", description: "La contrainte de temps pousse à accélérer les gestes et à négliger les pauses.", image: "/cards/c-delais.jpg", zones: ["cou", "lombaires"] },
   { id: "c-prep", kind: "cause", family: "Organisation du travail", title: "Préparation insuffisante", description: "Le matériel n'est pas prêt, l'opérateur improvise et force sur le poste.", image: "/cards/c-prep.jpg", zones: ["lombaires", "membres-superieurs"] },
@@ -39,15 +33,13 @@ export const CARDS: GameCard[] = [
   { id: "c-repartition", kind: "cause", family: "Facteur Humain & État de l'Opérateur", title: "Mauvaise répartition des charges", description: "Choix individuel lors du portage : pile instable, un seul côté chargé.", image: "/cards/c-repartition.jpg", zones: ["membres-superieurs", "lombaires"] },
   { id: "c-effort", kind: "cause", family: "Facteur Humain & État de l'Opérateur", title: "Effort important lié au port de charge", description: "Réponse physiologique du corps face à une charge trop lourde.", image: "/cards/c-effort.jpg", zones: ["lombaires", "membres-superieurs"] },
   { id: "c-stress", kind: "cause", family: "Facteur Humain & État de l'Opérateur", title: "Stress professionnel", description: "Pression, tension des trapèzes et du cou.", image: "/cards/c-stress.jpg", zones: ["cou"] },
-
-  { id: "s-lumbago", kind: "symptome", family: "Symptômes", title: "Douleur aiguë subite (lumbago)", description: "Tour de rein : douleur brutale en zone lombaire.", zones: ["lombaires"] },
-  { id: "s-cervicalgies", kind: "symptome", family: "Symptômes", title: "Cervicalgies", description: "Douleurs au niveau du cou.", zones: ["cou"] },
-  { id: "s-tensions", kind: "symptome", family: "Symptômes", title: "Tensions musculaires vives", description: "Trapèzes et épaules contractés.", zones: ["cou", "membres-superieurs"] },
-  { id: "s-fourmillement", kind: "symptome", family: "Symptômes", title: "Engourdissement / fourmillement", description: "Signes de compression nerveuse, type canal carpien.", zones: ["membres-superieurs"] },
-  { id: "s-douleurs", kind: "symptome", family: "Symptômes", title: "Douleurs aiguës", description: "Douleur vive, souvent aux genoux ou à la charge.", zones: ["membres-inferieurs", "lombaires"] },
-  { id: "s-craquement", kind: "symptome", family: "Symptômes", title: "Craquement", description: "Souffrance articulaire / cartilage.", zones: ["membres-inferieurs", "membres-superieurs"] },
-  { id: "s-gonflement", kind: "symptome", family: "Symptômes", title: "Gonflement", description: "Inflammation / épanchement.", zones: ["membres-inferieurs", "membres-superieurs"] },
-
+  { id: "s-lumbago", kind: "symptome", family: "Symptômes", title: "Douleur aiguë subite (lumbago)", description: "Tour de rein : douleur brutale en zone lombaire.", image: null, zones: ["lombaires"] },
+  { id: "s-cervicalgies", kind: "symptome", family: "Symptômes", title: "Cervicalgies", description: "Douleurs au niveau du cou.", image: null, zones: ["cou"] },
+  { id: "s-tensions", kind: "symptome", family: "Symptômes", title: "Tensions musculaires vives", description: "Trapèzes et épaules contractés.", image: null, zones: ["cou", "membres-superieurs"] },
+  { id: "s-fourmillement", kind: "symptome", family: "Symptômes", title: "Engourdissement / fourmillement", description: "Signes de compression nerveuse, type canal carpien.", image: null, zones: ["membres-superieurs"] },
+  { id: "s-douleurs", kind: "symptome", family: "Symptômes", title: "Douleurs aiguës", description: "Douleur vive, souvent aux genoux ou à la charge.", image: null, zones: ["membres-inferieurs", "lombaires"] },
+  { id: "s-craquement", kind: "symptome", family: "Symptômes", title: "Craquement", description: "Souffrance articulaire / cartilage.", image: null, zones: ["membres-inferieurs", "membres-superieurs"] },
+  { id: "s-gonflement", kind: "symptome", family: "Symptômes", title: "Gonflement", description: "Inflammation / épanchement.", image: null, zones: ["membres-inferieurs", "membres-superieurs"] },
   { id: "p-decollement", kind: "prevention", family: "Prévention Technique", title: "Outils de décollement", description: "Marteau à plaque ou outils de décollement pour briser l'effet ventouse.", image: "/cards/p-decollement.jpg", zones: ["lombaires", "membres-superieurs"] },
   { id: "p-treuil", kind: "prevention", family: "Prévention Technique", title: "Utilisation d'un treuil", description: "Mécaniser la traction pour supprimer l'effort manuel.", image: "/cards/p-treuil.jpg", zones: ["lombaires", "membres-superieurs"] },
   { id: "p-mecanique", kind: "prevention", family: "Prévention Technique", title: "Levage mécanisé", description: "Nacelle, grue ou système de levage à la place du portage.", image: "/cards/p-mecanique.jpg", zones: ["lombaires", "membres-superieurs"] },
@@ -68,13 +60,26 @@ export const CARDS: GameCard[] = [
   { id: "p-com", kind: "prevention", family: "Prévention Humaine", title: "Communication permanente", description: "Rester coordonnés pendant toute l'intervention.", image: "/cards/p-com.jpg", zones: ["cou"] },
 ];
 
-export const COMBOS = [
-  { title: "Échauffement & lombaires", cards: ["c-echauffement", "s-lumbago", "p-echauffement"], zones: ["lombaires"] },
-  { title: "Geste inadapté & dos", cards: ["c-manutention", "s-lumbago", "p-gestes"], zones: ["lombaires"] },
-  { title: "Effort & levage mécanisé", cards: ["c-effort", "c-levage", "p-treuil", "p-mecanique", "p-binome"], zones: ["lombaires", "membres-superieurs"] },
-  { title: "Répartition des charges", cards: ["c-repartition", "p-poids", "p-binome", "p-manutention"], zones: ["membres-superieurs"] },
-  { title: "Stress & cervicalgies", cards: ["c-stress", "s-cervicalgies", "p-briefing", "p-com"], zones: ["cou"] },
-  { title: "Fatigue & préparation", cards: ["c-fatigue", "p-echauffement", "p-analyse"], zones: ["lombaires"] },
-  { title: "Effet ventouse", cards: ["c-ventouse", "p-decollement", "p-equipements"], zones: ["membres-superieurs", "lombaires"] },
-  { title: "Plan de levage", cards: ["c-prep", "p-plan", "p-analyse", "p-verification"], zones: ["lombaires", "membres-superieurs"] },
-];
+export function cardById(id: string) {
+  return CARDS.find((c) => c.id === id);
+}
+
+export function cardsOf(kind: Kind) {
+  return CARDS.filter((c) => c.kind === kind);
+}
+
+export const KIND_LABEL: Record<Kind | "done", string> = {
+  symptome: "1 / 3 — Placez les symptômes",
+  cause: "2 / 3 — Placez les causes",
+  prevention: "3 / 3 — Placez les moyens de prévention",
+  done: "Fresque collective",
+};
+
+export const MESSAGES = {
+  start: "Placez d'abord tous les symptômes aux bons endroits du corps.",
+  afterSymptoms: "Symptômes validés. Les causes sont déverrouillées.",
+  afterCauses: "Causes validées. Les moyens de prévention sont déverrouillés.",
+  done: "Parcours terminé : symptômes, causes et préventions sont en place.",
+  error: "Mauvais emplacement : la carte revient dans le jeu.",
+  help: "Touchez d'abord la carte, puis la zone du corps.",
+};
