@@ -5,8 +5,8 @@ export function isCorrectPlacement(card: Card, zoneId: ZoneId) {
   return card.zones.includes(zoneId);
 }
 
-export function isStepComplete(kind: Kind, placements: Record<string, ZoneId>) {
-  return cardsOf(kind).every((c) => placements[c.id] && c.zones.includes(placements[c.id]));
+export function isStepComplete(kind: Kind, placements: Record<string, ZoneId>, situation?: string | null) {
+  return cardsOf(kind, situation).every((c) => placements[c.id] && c.zones.includes(placements[c.id]));
 }
 
 export function nextKind(kind: Kind): Kind | "done" {

@@ -1,4 +1,4 @@
-import { CARDS, MESSAGES, type Kind } from "@/data/cards";
+import { MESSAGES, cardById, situationById, type Kind, type SituationId } from "@/data/cards";
 import { COLORS, isCorrectPlacement, isStepComplete, nextKind } from "@/lib/game";
 import type { RoomAction, RoomState } from "@/lib/room";
 import type { ZoneId } from "@/data/zones";
@@ -24,8 +24,9 @@ function isHost(state: RoomState, id: string) {
   return member(state, id)?.role === "hote";
 }
 
-function empty(kind: Kind | "done" = "symptome"): Omit<RoomState, "code"> {
+function empty(kind: Kind | "done" = "symptome", situationId: SituationId = "tampons"): Omit<RoomState, "code"> {
   return {
+    situationId,
     mode: "atelier",
     kind,
     members: [],
@@ -43,7 +44,7 @@ function empty(kind: Kind | "done" = "symptome"): Omit<RoomState, "code"> {
 }
 
 function applyPlacement(state: RoomState, cardId: string, zoneId: ZoneId, by: string) {
-  const card = CARDS.find((c) => c.id === cardId);
+  const card = cardById(cardId);
   if (!card) return;
   state.proposal = null;
   state.lock = null;
@@ -63,7 +64,7 @@ function applyPlacement(state: RoomState, cardId: string, zoneId: ZoneId, by: st
   state.placements[cardId] = { zoneId, by, at: Date.now() };
   if (state.kind === "done") return;
   const placedZones = Object.fromEntries(Object.entries(state.placements).map(([k, v]) => [k, v.zoneId]));
-  if (isStepComplete(state.kind, placedZones)) {
+  if (isStepComplete(state.kind, placedZones, state.situationId)) {
     state.stepReady = true;
     state.message = state.kind === "symptome" ? MESSAGES.afterSymptoms : state.kind === "cause" ? MESSAGES.afterCauses : MESSAGES.done;
   } else {
@@ -74,9 +75,10 @@ function applyPlacement(state: RoomState, cardId: string, zoneId: ZoneId, by: st
 export function mutate(action: RoomAction): RoomState {
   if (action.type === "create") {
     const code = code4();
+    const situationId = situationById(action.situationId).id;
     const state: RoomState = {
       code,
-      ...empty("symptome"),
+      ...empty("symptome", situationId),
       members: [{ id: action.clientId, name: action.name, color: COLORS[0], role: "hote" }],
     };
     rooms.set(code, state);
@@ -118,8 +120,10 @@ export function mutate(action: RoomAction): RoomState {
       if (state.lock?.by === me.id) state.lock = null;
       return state;
     }
-    const card = CARDS.find((c) => c.id === action.cardId);
-    if (!card || card.kind !== state.kind) throw new Error("Cette carte n'est pas disponible");
+    const card = cardById(action.cardId);
+    if (!card || card.kind !== state.kind || card.situation !== state.situationId) {
+      throw new Error("Cette carte n'est pas disponible");
+    }
     if (state.placements[action.cardId]) throw new Error("Carte déjà posée");
     if (state.lock && state.lock.by !== me.id && state.lock.until > Date.now()) {
       throw new Error("Cette carte est déjà tenue");
@@ -187,7 +191,7 @@ export function mutate(action: RoomAction): RoomState {
     if (!isHost(state, me.id) || state.kind === "done") return state;
     const kind = state.kind;
     for (const id of Object.keys(state.placements)) {
-      const card = CARDS.find((c) => c.id === id);
+      const card = cardById(id);
       if (card?.kind === kind) delete state.placements[id];
     }
     state.stepReady = false;
@@ -200,7 +204,7 @@ export function mutate(action: RoomAction): RoomState {
   if (action.type === "restart-all") {
     if (!isHost(state, me.id)) return state;
     const members = state.members;
-    const next: RoomState = { code: state.code, ...empty("symptome"), members };
+    const next: RoomState = { code: state.code, ...empty("symptome", state.situationId), members };
     rooms.set(state.code, next);
     return next;
   }

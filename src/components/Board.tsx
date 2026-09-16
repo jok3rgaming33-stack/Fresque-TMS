@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CARDS, KIND_LABEL, MESSAGES, cardsOf, cardById, type Kind } from "@/data/cards";
+import {
+  KIND_LABEL,
+  MESSAGES,
+  cardsOf,
+  cardById,
+  cardsFor,
+  situationById,
+  type Kind,
+  type SituationId,
+} from "@/data/cards";
 import type { ZoneId } from "@/data/zones";
 import { continueLabel, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
 import { clientId, clearSolo, loadSolo, saveSolo } from "@/lib/storage";
@@ -17,10 +26,12 @@ export default function Board({
   variant,
   initialRoom,
   hostView,
+  situationId: situationProp,
 }: {
   variant: Variant;
   initialRoom?: RoomState;
   hostView?: boolean;
+  situationId?: SituationId;
 }) {
   const router = useRouter();
   const me = typeof window !== "undefined" ? clientId() : "";
@@ -33,11 +44,11 @@ export default function Board({
   const [message, setMessage] = useState<string | null>(MESSAGES.start);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [understood, setUnderstood] = useState<string[]>([]);
-  const [awaitingZone, setAwaitingZone] = useState(false);
   const [scale, setScale] = useState(1);
   const [tableNames, setTableNames] = useState<string[]>(["Léa", "Sam"]);
   const [actor, setActor] = useState("Léa");
   const [room, setRoom] = useState<RoomState | null>(initialRoom ?? null);
+  const [soloSituation, setSoloSituation] = useState<SituationId>(situationProp ?? "tampons");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -51,14 +62,18 @@ export default function Board({
       setPlacements(s.placements);
       setTheme(s.theme);
       setUnderstood(s.understood);
+      if (s.situationId) setSoloSituation(s.situationId);
       setMessage(stepMessage(s.kind));
     }
   }, [variant]);
 
+  const situationId: SituationId = room?.situationId ?? situationProp ?? soloSituation;
+  const situation = situationById(situationId);
+
   useEffect(() => {
     if (variant !== "solo") return;
-    saveSolo({ kind, placements, theme, understood });
-  }, [variant, kind, placements, theme, understood]);
+    saveSolo({ kind, situationId, placements, theme, understood });
+  }, [variant, kind, situationId, placements, theme, understood]);
 
   useEffect(() => {
     if (variant !== "room" || !room) return;
@@ -77,14 +92,12 @@ export default function Board({
   const liveBlink = room?.blinkingId ?? blinkingId;
   const selected = selectedId ? cardById(selectedId) ?? null : null;
   const stepKind = liveKind === "done" ? "prevention" : liveKind;
-  const remaining = CARDS.filter((c) => c.kind === stepKind && !livePlacements[c.id]);
-  const total = cardsOf(stepKind).length;
+  const deck = cardsFor(situationId);
+  const remaining = deck.filter((c) => c.kind === stepKind && !livePlacements[c.id]);
+  const total = cardsOf(stepKind, situationId).length;
   const placedCount = total - remaining.length;
-  const complete = liveKind !== "done" && isStepComplete(liveKind, livePlacements);
+  const complete = liveKind !== "done" && isStepComplete(liveKind, livePlacements, situationId);
   const members: Member[] = room?.members ?? tableNames.map((n, i) => ({ id: n, name: n, color: "#3D9A5F", role: i === 0 ? "hote" : "collaborateur" }));
-  const meMember = members.find((m) => m.id === me) || members.find((m) => m.name === actor);
-
-  const groupedDeck = remaining;
 
   function flash(id: string) {
     setBlinkingId(id);
@@ -98,16 +111,14 @@ export default function Board({
       try {
         setRoom(await roomFetch({ type: "select", code: room.code, clientId: me, cardId: selectedId === id ? null : id }));
         setSelectedId(selectedId === id ? null : id);
-        setAwaitingZone(selectedId !== id);
       } catch (e) {
         setMessage(e instanceof Error ? e.message : "Impossible");
       }
       return;
     }
     if (card.kind !== liveKind) return;
-    setSelectedId(id);
-    setAwaitingZone(true);
-    setMessage(MESSAGES.help);
+    setSelectedId(selectedId === id ? null : id);
+    if (selectedId !== id) setMessage(MESSAGES.help);
     if (navigator.vibrate) navigator.vibrate(10);
   }
 
@@ -119,7 +130,6 @@ export default function Board({
     if (variant === "room" && room) {
       try {
         setRoom(await roomFetch({ type: "propose", code: room.code, clientId: me, zoneId }));
-        setAwaitingZone(false);
       } catch (e) {
         setMessage(e instanceof Error ? e.message : "Impossible");
       }
@@ -130,14 +140,12 @@ export default function Board({
       flash(card.id);
       setMessage(MESSAGES.error);
       setSelectedId(null);
-      setAwaitingZone(false);
       return;
     }
     const next = { ...livePlacements, [card.id]: zoneId };
     setPlacements(next);
     setSelectedId(null);
-    setAwaitingZone(false);
-    if (liveKind !== "done" && isStepComplete(liveKind, next)) {
+    if (liveKind !== "done" && isStepComplete(liveKind, next, situationId)) {
       setMessage(liveKind === "symptome" ? MESSAGES.afterSymptoms : liveKind === "cause" ? MESSAGES.afterCauses : MESSAGES.done);
     } else {
       setMessage(null);
@@ -161,6 +169,7 @@ export default function Board({
 
   function reset() {
     if (variant === "room" && room) {
+      if (!hostView) return;
       roomFetch({ type: "restart-all", code: room.code, clientId: me }).then(setRoom);
       return;
     }
@@ -180,54 +189,60 @@ export default function Board({
     <div className="min-h-screen px-3 py-4 md:px-6">
       {!projection ? (
         <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <button type="button" onClick={() => router.push("/")} className="min-h-11 text-sm text-[var(--muted)]">
-            ← Accueil
+          <button type="button" onClick={() => router.push(hostView ? "/formateur" : "/")} className="min-h-11 text-sm text-[var(--muted)]">
+            ← {hostView ? "Espace formateur" : "Accueil"}
           </button>
           <div className="text-center">
-            <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--gold)]">Fresque TMS</p>
-            <p className="font-serif text-lg">{hostView ? "Vue formateur" : "Atelier"}</p>
+            <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--gold)]">
+              Fresque N° {situation.fresque}
+            </p>
+            <p className="font-serif text-lg">{situation.short}</p>
           </div>
           <div className="flex gap-2">
             {hostView ? (
-              <button type="button" onClick={() => router.push("/formateur/corrige")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+              <button type="button" onClick={() => router.push(`/formateur/corrige?situation=${situation.id}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">
                 Corrigé
               </button>
             ) : null}
-            <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
-              {theme === "dark" ? "Clair" : "Sombre"}
-            </button>
-            <button type="button" onClick={reset} className="min-h-11 border border-[var(--line)] px-3 text-sm">
-              Recommencer
-            </button>
+            {hostView ? (
+              <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                {theme === "dark" ? "Clair" : "Sombre"}
+              </button>
+            ) : null}
+            {hostView || variant !== "room" ? (
+              <button type="button" onClick={reset} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                Recommencer
+              </button>
+            ) : null}
           </div>
         </header>
       ) : null}
 
-      <p className="text-center text-sm font-bold">{KIND_LABEL[liveKind]}</p>
-      <div className="mx-auto mt-2 h-2 max-w-md overflow-hidden rounded-full bg-white/10">
-        <div className="h-full bg-[var(--green)]" style={{ width: `${(placedCount / Math.max(total, 1)) * 100}%` }} />
+      <p className="text-center font-serif text-xl md:text-2xl">{KIND_LABEL[liveKind]}</p>
+      <div className="mx-auto mt-2 h-1.5 max-w-md overflow-hidden bg-white/10">
+        <div className="h-full bg-[var(--gold)]" style={{ width: `${(placedCount / Math.max(total, 1)) * 100}%` }} />
       </div>
       <p className="mt-1 text-center text-xs text-[var(--muted)]">
         {placedCount} / {total}
-        {room ? ` · code ${room.code} · ${members.length} présents` : ""}
+        {room ? ` · ${room.code} · ${members.length} présents` : ""}
       </p>
-      {liveMessage ? <p className="mx-auto mt-3 max-w-2xl rounded-2xl bg-[var(--panel)] px-4 py-3 text-center text-sm">{liveMessage}</p> : null}
+      {liveMessage ? <p className="mx-auto mt-3 max-w-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-center text-sm">{liveMessage}</p> : null}
 
-      {variant === "table" ? (
+      {variant === "table" && hostView ? (
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           {tableNames.map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => setActor(n)}
-              className={`min-h-11 rounded-full px-4 text-sm font-bold ${actor === n ? "bg-[var(--green)] text-[#0f1a12]" : "bg-white/10"}`}
+              className={`min-h-11 px-4 text-sm font-bold ${actor === n ? "bg-[var(--gold)] text-[#1a140c]" : "bg-white/10"}`}
             >
               {n}
             </button>
           ))}
           <button
             type="button"
-            className="min-h-11 rounded-full bg-white/10 px-3 text-sm"
+            className="min-h-11 bg-white/10 px-3 text-sm"
             onClick={() => {
               const n = window.prompt("Prénom ?");
               if (n) setTableNames((xs) => [...xs, n.trim()]);
@@ -241,7 +256,7 @@ export default function Board({
       {room ? (
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           {members.map((m) => (
-            <span key={m.id} className="rounded-full px-3 py-1 text-xs font-bold" style={{ background: m.color }}>
+            <span key={m.id} className="px-3 py-1 text-xs font-bold" style={{ background: m.color }}>
               {m.name}
               {m.role === "hote" ? " · hôte" : ""}
             </span>
@@ -250,7 +265,7 @@ export default function Board({
       ) : null}
 
       {proposal && proposalCard ? (
-        <div className="mx-auto mt-3 max-w-xl rounded-2xl border border-amber-400/50 bg-amber-500/10 p-4">
+        <div className="mx-auto mt-3 max-w-xl border border-amber-400/50 bg-amber-500/10 p-4">
           <p className="text-sm font-semibold">
             {members.find((m) => m.id === proposal.by)?.name} propose « {proposalCard.title} »
             {hostView ? ` → ${proposal.zoneId}` : " sur une zone du corps"}
@@ -258,14 +273,14 @@ export default function Board({
           <div className="mt-2 flex gap-2">
             <button
               type="button"
-              className="min-h-11 flex-1 rounded-full bg-[var(--green)] font-bold text-[#0f1a12]"
+              className="min-h-11 flex-1 bg-[var(--green)] font-bold text-[#0f1a12]"
               onClick={() => room && roomFetch({ type: "vote", code: room.code, clientId: me, vote: "oui" }).then(setRoom)}
             >
               ✓ On est d&apos;accord
             </button>
             <button
               type="button"
-              className="min-h-11 flex-1 rounded-full bg-[var(--red)] font-bold"
+              className="min-h-11 flex-1 bg-[var(--red)] font-bold"
               onClick={() => room && roomFetch({ type: "vote", code: room.code, clientId: me, vote: "non" }).then(setRoom)}
             >
               ✗ Autre zone
@@ -273,7 +288,7 @@ export default function Board({
             {hostView ? (
               <button
                 type="button"
-                className="min-h-11 rounded-full bg-white/10 px-4 font-semibold"
+                className="min-h-11 bg-white/10 px-4 font-semibold"
                 onClick={() => room && roomFetch({ type: "force", code: room.code, clientId: me }).then(setRoom)}
               >
                 Forcer
@@ -289,11 +304,22 @@ export default function Board({
         </p>
       ) : null}
 
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(280px,520px)_minmax(240px,1fr)]">
+      {selected && !projection ? (
+        <div className="mx-auto mt-4 max-w-sm lg:hidden">
+          <CardDetailSheet
+            card={selected}
+            placedZone={livePlacements[selected.id]}
+            revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
+            onClose={() => setSelectedId(null)}
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(280px,520px)_minmax(260px,1fr)]">
         <aside className={`${projection ? "hidden" : ""} order-2 lg:order-1`}>
           {liveKind !== "done" ? (
             <Deck
-              cards={groupedDeck}
+              cards={remaining}
               selectedId={selectedId}
               lock={lock}
               blinkingId={liveBlink}
@@ -305,10 +331,10 @@ export default function Board({
 
         <section className="order-1 lg:order-2">
           <div className="mb-2 flex justify-center gap-2 lg:hidden">
-            <button type="button" className="min-h-11 rounded-full bg-white/10 px-3" onClick={() => setScale((s) => Math.max(1, s - 0.25))}>
+            <button type="button" className="min-h-11 bg-white/10 px-3" onClick={() => setScale((s) => Math.max(1, s - 0.25))}>
               −
             </button>
-            <button type="button" className="min-h-11 rounded-full bg-white/10 px-3" onClick={() => setScale((s) => Math.min(2.5, s + 0.25))}>
+            <button type="button" className="min-h-11 bg-white/10 px-3" onClick={() => setScale((s) => Math.min(2.5, s + 0.25))}>
               +
             </button>
           </div>
@@ -317,8 +343,8 @@ export default function Board({
             placements={livePlacements}
             proposed={proposal ? { cardId: proposal.cardId, zoneId: proposal.zoneId } : null}
             blinkingId={liveBlink}
-            reveal={room?.revealZones}
-            debug={debug}
+            reveal={Boolean(room?.revealZones) && Boolean(hostView)}
+            debug={debug && Boolean(hostView)}
             onZone={chooseZone}
             onPin={(id) => setSelectedId(id)}
             projection={projection}
@@ -331,8 +357,7 @@ export default function Board({
             <CardDetailSheet
               card={selected}
               placedZone={livePlacements[selected.id]}
-              revealZones={Boolean(room?.revealZones) || hostView}
-              onPlace={awaitingZone ? undefined : () => setAwaitingZone(true)}
+              revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
               onClose={() => setSelectedId(null)}
               onRemove={
                 livePlacements[selected.id] && (variant !== "room" || hostView)
@@ -349,26 +374,14 @@ export default function Board({
               }
             />
           ) : (
-            <p className="rounded-3xl bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">{MESSAGES.help}</p>
+            <p className="border border-[var(--line)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">{MESSAGES.help}</p>
           )}
         </aside>
       </div>
 
-      {selected && !projection ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
-          <CardDetailSheet
-            card={selected}
-            placedZone={livePlacements[selected.id]}
-            revealZones={Boolean(room?.revealZones) || hostView}
-            onPlace={() => setAwaitingZone(true)}
-            onClose={() => setSelectedId(null)}
-          />
-        </div>
-      ) : null}
-
       {(complete || room?.stepReady) && liveKind !== "done" ? (
         <div className="mt-6 flex justify-center">
-          <button type="button" onClick={continueStep} className="min-h-12 rounded-full bg-[var(--green)] px-8 text-base font-bold text-[#0f1a12]">
+          <button type="button" onClick={continueStep} className="min-h-12 bg-[var(--gold)] px-8 text-base font-bold text-[#1a140c]">
             {continueLabel(liveKind)}
           </button>
         </div>
@@ -376,7 +389,7 @@ export default function Board({
 
       {liveKind === "done" ? (
         <div className="mt-6 flex justify-center">
-          <button type="button" onClick={() => router.push(room ? `/fresque?code=${room.code}` : "/fresque")} className="min-h-12 rounded-full bg-[var(--green)] px-8 font-bold text-[#0f1a12]">
+          <button type="button" onClick={() => router.push(room ? `/fresque?code=${room.code}` : "/fresque")} className="min-h-12 bg-[var(--gold)] px-8 font-bold text-[#1a140c]">
             Voir la fresque
           </button>
         </div>
@@ -384,16 +397,16 @@ export default function Board({
 
       {hostView && room ? (
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button className="min-h-11 rounded-full bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-mode", code: room.code, clientId: me }).then(setRoom)}>
+          <button className="min-h-11 bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-mode", code: room.code, clientId: me }).then(setRoom)}>
             Mode {room.mode === "atelier" ? "Guidé" : "Atelier"}
           </button>
           <button className="min-h-11 border border-[var(--line)] px-4" onClick={() => roomFetch({ type: "toggle-reveal", code: room.code, clientId: me }).then(setRoom)}>
-            {room.revealZones ? "Masquer les zones" : "Révéler les zones (formateur)"}
+            {room.revealZones ? "Masquer les zones" : "Révéler les zones"}
           </button>
-          <button className="min-h-11 rounded-full bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-projection", code: room.code, clientId: me }).then(setRoom)}>
+          <button className="min-h-11 bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-projection", code: room.code, clientId: me }).then(setRoom)}>
             Projection
           </button>
-          <button className="min-h-11 rounded-full bg-white/10 px-4" onClick={() => roomFetch({ type: "restart-step", code: room.code, clientId: me }).then(setRoom)}>
+          <button className="min-h-11 bg-white/10 px-4" onClick={() => roomFetch({ type: "restart-step", code: room.code, clientId: me }).then(setRoom)}>
             Recommencer l&apos;étape
           </button>
         </div>

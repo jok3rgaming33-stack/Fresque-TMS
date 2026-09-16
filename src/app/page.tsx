@@ -22,7 +22,7 @@ export default function HomePage() {
         <div className="gold-line mx-auto my-10 max-w-xs" />
 
         <div className="grid gap-5 md:grid-cols-2">
-          <Link href="/formateur" onClick={() => setAppRole("formateur")} className="access-card group rounded-sm p-8 md:p-10">
+          <Link href="/formateur" className="access-card group rounded-sm p-8 md:p-10">
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--gold)]">Accès formateur</p>
             <h2 className="mt-4 font-serif text-4xl">Formateur</h2>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-[var(--muted)]">

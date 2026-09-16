@@ -1,10 +1,11 @@
-import type { Kind } from "@/data/cards";
+import type { Kind, SituationId } from "@/data/cards";
 import type { ZoneId } from "@/data/zones";
 
 const KEY = "fresque-tms-save";
 
 export type SoloSave = {
   kind: Kind | "done";
+  situationId: SituationId;
   placements: Record<string, ZoneId>;
   theme: "dark" | "light";
   understood: string[];

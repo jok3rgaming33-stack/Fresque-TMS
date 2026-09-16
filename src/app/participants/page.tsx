@@ -40,7 +40,7 @@ function Form() {
       <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--gold)]">Espace participant(e)s</p>
       <h1 className="mt-3 font-serif text-4xl">Rejoindre</h1>
       <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-        Saisissez le code donné par le formateur. Aucun corrigé n’est affiché de votre côté.
+        Saisissez le code donné par le formateur.
       </p>
       <form onSubmit={join} className="mt-8 space-y-4">
         <label className="block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -66,9 +66,6 @@ function Form() {
           Entrer dans l’atelier
         </button>
       </form>
-      <Link href="/table" onClick={() => setAppRole("participant")} className="mt-8 text-center text-sm text-[var(--muted)]">
-        Un seul appareil autour de la table
-      </Link>
     </div>
   );
 }

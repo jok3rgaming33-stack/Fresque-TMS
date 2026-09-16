@@ -7,10 +7,10 @@ export type Zone = {
 };
 
 export const ZONES: Zone[] = [
-  { id: "cou", label: "Cou / cervicales", style: { top: "11%", left: "38%", width: "24%", height: "8%" } },
-  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "22%", left: "8%", width: "84%", height: "16%" } },
-  { id: "lombaires", label: "Zone lombaire", style: { top: "38%", left: "36%", width: "28%", height: "12%" } },
-  { id: "membres-inferieurs", label: "Membres inférieurs", style: { top: "58%", left: "32%", width: "36%", height: "28%" } },
+  { id: "cou", label: "Cou / cervicales", style: { top: "19%", left: "39%", width: "22%", height: "7%" } },
+  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "25%", left: "11%", width: "78%", height: "23%" } },
+  { id: "lombaires", label: "Zone lombaire", style: { top: "46%", left: "34%", width: "32%", height: "11%" } },
+  { id: "membres-inferieurs", label: "Membres inférieurs", style: { top: "58%", left: "29%", width: "42%", height: "30%" } },
 ];
 
 export function zoneLabel(id: ZoneId) {

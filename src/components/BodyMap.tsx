@@ -27,9 +27,12 @@ export default function BodyMap({
   scale?: number;
 }) {
   return (
-    <div className="relative mx-auto w-full max-w-[520px] origin-top" style={{ transform: scale && scale !== 1 ? `scale(${scale})` : undefined }}>
+    <div
+      className="relative mx-auto w-full max-w-[520px] origin-top"
+      style={{ transform: scale && scale !== 1 ? `scale(${scale})` : undefined }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/perso.jpg" alt="Personnage technicien" className="mx-auto block h-auto w-full max-h-[70vh] object-contain md:max-h-[82vh]" />
+      <img src="/perso.jpg" alt="Personnage technicien" className="mx-auto block h-auto w-full max-h-[62vh] object-contain md:max-h-[78vh]" />
       {ZONES.map((z) => (
         <button
           key={z.id}
@@ -45,8 +48,8 @@ export default function BodyMap({
         const card = CARDS.find((c) => c.id === id);
         if (!zone || !card) return null;
         const color = card.kind === "symptome" ? "#C0392B" : card.kind === "prevention" ? "#3D9A5F" : "#9aa3ad";
-        const left = 42 + ((i * 7) % 16);
-        const top = 8 + ((i * 9) % 20);
+        const left = 18 + ((i * 11) % 48);
+        const top = 10 + ((i * 9) % 42);
         return (
           <button
             key={id}

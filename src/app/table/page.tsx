@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Board from "@/components/Board";
-import { isFormateur, setAppRole } from "@/lib/role";
+import FormateurGate from "@/components/FormateurGate";
+import { situationById, type SituationId } from "@/data/cards";
+
+function Inner() {
+  const situationId = situationById(useSearchParams().get("situation") as SituationId).id;
+  return <Board variant="table" hostView situationId={situationId} />;
+}
 
 export default function TablePage() {
-  useEffect(() => {
-    if (!isFormateur()) setAppRole("participant");
-  }, []);
-  return <Board variant="table" hostView={typeof window !== "undefined" && isFormateur()} />;
+  return (
+    <FormateurGate>
+      <Suspense>
+        <Inner />
+      </Suspense>
+    </FormateurGate>
+  );
 }

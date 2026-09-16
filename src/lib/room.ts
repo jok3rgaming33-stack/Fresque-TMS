@@ -1,4 +1,4 @@
-import type { Kind } from "@/data/cards";
+import type { Kind, SituationId } from "@/data/cards";
 import type { ZoneId } from "@/data/zones";
 
 export type Role = "hote" | "collaborateur" | "observateur";
@@ -8,6 +8,7 @@ export type Member = { id: string; name: string; color: string; role: Role };
 
 export type RoomState = {
   code: string;
+  situationId: SituationId;
   mode: PlayMode;
   kind: Kind | "done";
   members: Member[];
@@ -30,7 +31,7 @@ export type RoomState = {
 };
 
 export type RoomAction =
-  | { type: "create"; clientId: string; name: string }
+  | { type: "create"; clientId: string; name: string; situationId: SituationId }
   | { type: "join"; code: string; clientId: string; name: string; role?: Role }
   | { type: "leave"; code: string; clientId: string }
   | { type: "select"; code: string; clientId: string; cardId: string | null }
