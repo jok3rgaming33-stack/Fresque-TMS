@@ -1,7 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import Board from "@/components/Board";
+import { isFormateur, setAppRole } from "@/lib/role";
 
 export default function TablePage() {
-  return <Board variant="table" />;
+  useEffect(() => {
+    if (!isFormateur()) setAppRole("participant");
+  }, []);
+  return <Board variant="table" hostView={typeof window !== "undefined" && isFormateur()} />;
 }

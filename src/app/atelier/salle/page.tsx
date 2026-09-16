@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Board from "@/components/Board";
 import { clientId } from "@/lib/storage";
+import { isFormateur } from "@/lib/role";
 import { roomGet, type RoomState } from "@/lib/room";
 
 function Inner() {
@@ -23,7 +24,7 @@ function Inner() {
 
   if (error) return <p className="p-8">{error}</p>;
   if (!room) return <p className="p-8">Connexion à l&apos;atelier…</p>;
-  const host = room.members.find((m) => m.id === me)?.role === "hote";
+  const host = room.members.find((m) => m.id === me)?.role === "hote" || isFormateur();
   return <Board variant="room" initialRoom={room} hostView={host} />;
 }
 

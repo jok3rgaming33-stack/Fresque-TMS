@@ -180,18 +180,24 @@ export default function Board({
     <div className="min-h-screen px-3 py-4 md:px-6">
       {!projection ? (
         <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <button type="button" onClick={() => router.push("/")} className="min-h-11 text-sm font-semibold">
+          <button type="button" onClick={() => router.push("/")} className="min-h-11 text-sm text-[var(--muted)]">
             ← Accueil
           </button>
-          <div className="rounded-full bg-gradient-to-r from-[#C0392B] via-zinc-600 to-[#3D9A5F] px-4 py-2 text-sm font-bold">
-            Fresque TMS
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--gold)]">Fresque TMS</p>
+            <p className="font-serif text-lg">{hostView ? "Vue formateur" : "Atelier"}</p>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 rounded-full bg-white/10 px-3 text-sm">
+            {hostView ? (
+              <button type="button" onClick={() => router.push("/formateur/corrige")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                Corrigé
+              </button>
+            ) : null}
+            <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
               {theme === "dark" ? "Clair" : "Sombre"}
             </button>
-            <button type="button" onClick={reset} className="min-h-11 rounded-full bg-white/10 px-3 text-sm font-semibold">
-              Tout recommencer
+            <button type="button" onClick={reset} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+              Recommencer
             </button>
           </div>
         </header>
@@ -246,7 +252,8 @@ export default function Board({
       {proposal && proposalCard ? (
         <div className="mx-auto mt-3 max-w-xl rounded-2xl border border-amber-400/50 bg-amber-500/10 p-4">
           <p className="text-sm font-semibold">
-            {members.find((m) => m.id === proposal.by)?.name} propose {proposalCard.title} → {proposal.zoneId}
+            {members.find((m) => m.id === proposal.by)?.name} propose « {proposalCard.title} »
+            {hostView ? ` → ${proposal.zoneId}` : " sur une zone du corps"}
           </p>
           <div className="mt-2 flex gap-2">
             <button
@@ -380,8 +387,8 @@ export default function Board({
           <button className="min-h-11 rounded-full bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-mode", code: room.code, clientId: me }).then(setRoom)}>
             Mode {room.mode === "atelier" ? "Guidé" : "Atelier"}
           </button>
-          <button className="min-h-11 rounded-full bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-reveal", code: room.code, clientId: me }).then(setRoom)}>
-            Révéler zones
+          <button className="min-h-11 border border-[var(--line)] px-4" onClick={() => roomFetch({ type: "toggle-reveal", code: room.code, clientId: me }).then(setRoom)}>
+            {room.revealZones ? "Masquer les zones" : "Révéler les zones (formateur)"}
           </button>
           <button className="min-h-11 rounded-full bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-projection", code: room.code, clientId: me }).then(setRoom)}>
             Projection

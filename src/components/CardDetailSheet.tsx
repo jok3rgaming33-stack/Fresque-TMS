@@ -18,7 +18,7 @@ export default function CardDetailSheet({
   onClose: () => void;
   onRemove?: () => void;
 }) {
-  const showZones = Boolean(placedZone) || revealZones;
+  const showZones = Boolean(revealZones);
   return (
     <div className="sheet p-5 md:rounded-3xl md:border md:border-white/10">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{card.family}</p>
