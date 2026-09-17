@@ -212,12 +212,6 @@ body {
   font-family: var(--font-serif), Fraunces, Georgia, serif;
   font-size: 1.05rem;
 }
-.org-drop-hint {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--muted);
-}
 .org-badge {
   top: 10px;
   right: 10px;

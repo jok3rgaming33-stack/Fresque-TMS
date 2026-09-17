@@ -94,7 +94,6 @@ export default function BodyMap({
       >
         <span className="org-drop-kicker">Hors corps</span>
         <span className="org-drop-title">Organisation &amp; contexte</span>
-        <span className="org-drop-hint">Délais, communication, effectifs, météo…</span>
         {orgCount ? <span className="zone-badge org-badge">{orgCount}</span> : null}
       </button>
     </div>
