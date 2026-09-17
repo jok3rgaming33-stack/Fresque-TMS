@@ -17,7 +17,7 @@ import {
 } from "@/data/cards";
 import { zoneLabel, type ZoneId } from "@/data/zones";
 import { continueLabel, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
-import { clientId, clearSolo, loadSolo, saveSolo } from "@/lib/storage";
+import { clientId, clearSolo, leaveLocalSession, loadSolo, saveSolo } from "@/lib/storage";
 import { DEMO_CODE, roomFetch, roomGet, type Member, type RoomState } from "@/lib/room";
 import BodyMap from "./BodyMap";
 import Deck from "./Deck";
@@ -367,6 +367,20 @@ export default function Board({
 
   const demo = room?.code === DEMO_CODE;
 
+  async function quitSession() {
+    if (typeof window !== "undefined" && !window.confirm("Quitter l’atelier en cours ?")) return;
+    if (variant === "room" && room) {
+      try {
+        await roomFetch({ type: "leave", code: room.code, clientId: me });
+      } catch {
+        /* still leave locally */
+      }
+    }
+    leaveLocalSession();
+    if (variant === "solo") clearSolo();
+    router.push(hostView ? "/formateur" : "/");
+  }
+
   function reset() {
     if (variant === "room" && room) {
       if (!hostView && !demo) return;
@@ -436,8 +450,8 @@ export default function Board({
       {!projection ? (
         <header className="board-header">
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => router.push(hostView ? "/formateur" : "/")} className="shrink-0 px-1 text-sm text-[var(--muted)]">
-              ←
+            <button type="button" onClick={quitSession} className="shrink-0 px-1 text-xs text-[var(--muted)]">
+              Quitter
             </button>
             <div className="min-w-0 flex-1 text-center">
               <p className="truncate font-serif text-base leading-tight">

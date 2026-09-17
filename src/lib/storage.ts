@@ -30,6 +30,12 @@ export function clearSolo() {
   localStorage.removeItem(KEY);
 }
 
+export function leaveLocalSession() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem("fresque-tms-code");
+  sessionStorage.removeItem("fresque-tms-demo");
+}
+
 export function clientId() {
   if (typeof window === "undefined") return "srv";
   const k = "fresque-tms-client";
