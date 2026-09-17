@@ -179,13 +179,19 @@ body {
 }
 .org-drop {
   position: relative;
-  width: min(100%, 280px);
-  padding: 10px 12px;
-  border: 2px dashed rgb(212 175 122 / 0.35);
-  background: rgb(212 175 122 / 0.06);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 8px 12px 10px;
+  border: 2px dashed rgb(212 175 122 / 0.45);
+  background: var(--bg);
   color: inherit;
   text-align: left;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .org-drop.armed,
 .org-drop.drop-ok {
@@ -223,7 +229,7 @@ body {
   width: auto;
   max-width: 100%;
   height: auto;
-  max-height: 42vh;
+  max-height: 32vh;
 }
 .mini-grid {
   display: grid;
@@ -433,8 +439,8 @@ html.dragging-card body {
 .board-body {
   order: 1;
   flex: 0 0 auto;
-  max-height: 46vh;
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 }
 .board-slot {
   order: 2;
@@ -499,7 +505,7 @@ html.dragging-card body {
     order: 3;
   }
   .board-body-img {
-    max-height: 72vh;
+    max-height: 58vh;
   }
   .body-layout {
     flex-direction: row;
@@ -509,6 +515,7 @@ html.dragging-card body {
   }
   .org-drop {
     width: 220px;
+    margin-top: 10px;
   }
   .mini-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
