@@ -350,6 +350,13 @@ export const KIND_LABEL: Record<Kind | "done", string> = {
   done: "Fresque collective",
 };
 
+export const KIND_SHORT: Record<Kind | "done", string> = {
+  symptome: "Symptômes",
+  cause: "Causes",
+  prevention: "Préventions",
+  done: "Fresque",
+};
+
 export const MESSAGES = {
   start: "Placez d'abord tous les symptômes aux bons endroits du corps.",
   afterSymptoms: "Symptômes validés. Les causes sont déverrouillées.",

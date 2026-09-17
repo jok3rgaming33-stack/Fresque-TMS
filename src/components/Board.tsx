@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  KIND_LABEL,
+  KIND_SHORT,
   MESSAGES,
   cardById,
   uniqueCardsOf,
@@ -434,46 +434,46 @@ export default function Board({
     <div className="board-page">
       <div className="board-chrome">
       {!projection ? (
-        <header className="board-header mb-2">
+        <header className="board-header">
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => router.push(hostView ? "/formateur" : "/")} className="min-h-11 shrink-0 text-sm text-[var(--muted)]">
-              ← Accueil
+            <button type="button" onClick={() => router.push(hostView ? "/formateur" : "/")} className="shrink-0 px-1 text-sm text-[var(--muted)]">
+              ←
             </button>
             <div className="min-w-0 flex-1 text-center">
-              <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--gold)]">Fresque N° {situation.fresque}</p>
-              <p className="truncate font-serif text-lg">{situation.short}</p>
+              <p className="truncate font-serif text-base leading-tight">
+                {situation.short}
+                <span className="ml-2 text-sm font-sans text-[var(--muted)]">
+                  {KIND_SHORT[liveKind]} · {placedCount}/{total}
+                </span>
+              </p>
+              <div className="mx-auto mt-1 h-1 max-w-xs overflow-hidden bg-white/10">
+                <div className="h-full bg-[var(--gold)]" style={{ width: `${(placedCount / Math.max(total, 1)) * 100}%` }} />
+              </div>
             </div>
-            <span className="inline-block w-14 shrink-0" />
+            {hostView || variant !== "room" || demo ? (
+              <button type="button" onClick={reset} className="shrink-0 px-2 text-xs text-[var(--muted)]">
+                ↺
+              </button>
+            ) : (
+              <span className="inline-block w-6 shrink-0" />
+            )}
           </div>
-          {hostView || variant !== "room" || demo ? (
-            <div className="flex flex-wrap justify-center gap-2">
-              {hostView ? (
-                <button type="button" onClick={() => router.push(`/formateur/corrige?situation=${situation.id}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">
-                  Corrigé
-                </button>
-              ) : null}
-              {hostView ? (
-                <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
-                  {theme === "dark" ? "Clair" : "Sombre"}
-                </button>
-              ) : null}
-              <button type="button" onClick={reset} className="min-h-11 border border-[var(--line)] px-3 text-sm">
-                Recommencer
+          {hostView ? (
+            <div className="hidden flex-wrap justify-center gap-2 lg:flex">
+              <button type="button" onClick={() => router.push(`/formateur/corrige?situation=${situation.id}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                Corrigé
+              </button>
+              <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                {theme === "dark" ? "Clair" : "Sombre"}
               </button>
             </div>
           ) : null}
         </header>
       ) : null}
 
-      <p className="text-center font-serif text-lg leading-snug md:text-2xl">{KIND_LABEL[liveKind]}</p>
-      <div className="mx-auto mt-2 h-1.5 max-w-md overflow-hidden bg-white/10">
-        <div className="h-full bg-[var(--gold)]" style={{ width: `${(placedCount / Math.max(total, 1)) * 100}%` }} />
-      </div>
-      <p className="mt-1 text-center text-xs text-[var(--muted)]">
-        {placedCount} / {total}
-        {room ? ` · ${room.code} · ${members.length} présents` : ""}
-      </p>
-      {liveMessage ? <p className="mx-auto mt-2 max-w-2xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-center text-sm">{liveMessage}</p> : null}
+      {liveMessage === MESSAGES.error ? (
+        <p className="mx-auto mt-1 max-w-xl px-2 text-center text-xs text-[#E8A090]">{liveMessage}</p>
+      ) : null}
 
       {variant === "table" && hostView ? (
         <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -500,12 +500,11 @@ export default function Board({
         </div>
       ) : null}
 
-      {room ? (
-        <div className="mt-3 flex flex-wrap justify-center gap-2">
+      {room && members.length > 1 ? (
+        <div className="mt-1 flex flex-wrap justify-center gap-1">
           {members.map((m) => (
-            <span key={m.id} className="px-3 py-1 text-xs font-bold" style={{ background: m.color }}>
+            <span key={m.id} className="rounded-sm px-1.5 py-0.5 text-[10px] font-bold" style={{ background: m.color }}>
               {m.name}
-              {m.role === "hote" ? " · hôte" : ""}
             </span>
           ))}
         </div>

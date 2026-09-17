@@ -176,43 +176,50 @@ body {
   width: auto;
   max-width: 100%;
   height: auto;
-  max-height: 38vh;
+  max-height: 42vh;
 }
 .mini-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
   gap: 8px;
   padding-bottom: 8px;
+  align-content: start;
+  justify-items: center;
 }
 .mini-card {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: 4px;
+  width: 100%;
+  max-width: 120px;
   min-height: 0;
-  padding: 6px;
+  padding: 5px;
   border-radius: 6px;
   text-align: left;
   cursor: pointer;
   user-select: none;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.mini-card-img {
+.mini-card-img,
+.mini-card-fallback {
   width: 100%;
-  aspect-ratio: 5 / 8;
+  height: 88px;
   object-fit: contain;
   border-radius: 4px;
-  background: rgb(0 0 0 / 0.2);
+  background: rgb(0 0 0 / 0.18);
 }
 .mini-card-fallback {
   display: grid;
   place-items: center;
-  aspect-ratio: 5 / 8;
+  font-size: 11px;
   font-weight: 800;
-  opacity: 0.8;
+  text-align: center;
+  padding: 4px;
+  line-height: 1.15;
 }
 .mini-card-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1.2;
   display: -webkit-box;
@@ -352,7 +359,7 @@ html.dragging-card body {
   height: 100dvh;
   max-width: 100%;
   overflow: hidden;
-  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  padding: 6px 10px max(8px, env(safe-area-inset-bottom));
 }
 
 .board-chrome {
@@ -379,7 +386,7 @@ html.dragging-card body {
 .board-body {
   order: 1;
   flex: 0 0 auto;
-  max-height: 42vh;
+  max-height: 46vh;
   overflow: hidden;
 }
 .board-slot {
@@ -420,7 +427,7 @@ html.dragging-card body {
   }
   .board-stage {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 420px) minmax(0, 1fr);
+    grid-template-columns: 280px minmax(0, 1fr) 300px;
     align-items: start;
     gap: 1.25rem;
     flex: none;
@@ -445,10 +452,17 @@ html.dragging-card body {
     order: 3;
   }
   .board-body-img {
-    max-height: 78vh;
+    max-height: 72vh;
   }
   .mini-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mini-card {
+    max-width: 128px;
+  }
+  .mini-card-img,
+  .mini-card-fallback {
+    height: 100px;
   }
   .card-preview-img,
   .card-face {
