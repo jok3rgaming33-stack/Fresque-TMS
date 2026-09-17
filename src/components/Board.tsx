@@ -122,8 +122,10 @@ export default function Board({
       const next = await roomGet(room.code);
       if (!next) return;
       const cur = roomRef.current;
+      const rank: Record<string, number> = { symptome: 0, cause: 1, prevention: 2, done: 3 };
       const nextCount = Object.keys(next.placements || {}).length;
       const curCount = Object.keys(cur?.placements || {}).length;
+      if (cur && rank[next.kind] < rank[cur.kind]) return;
       if (cur && nextCount < curCount && next.kind === cur.kind && next.situationId === cur.situationId) {
         return;
       }
@@ -307,18 +309,36 @@ export default function Board({
   }, []);
 
   function continueStep() {
-    if (variant === "room" && room) {
-      roomFetch({ type: "continue", code: room.code, clientId: me }).then(setRoom);
-      return;
-    }
     if (liveKind === "done") {
-      router.push("/fresque");
+      router.push(room ? `/fresque?code=${room.code}` : "/fresque");
       return;
     }
     const n = nextKind(liveKind);
     setKind(n);
     setMessage(stepMessage(n));
-    if (n === "done") router.push("/fresque");
+    setSelectedId(null);
+    if (variant === "room" && room) {
+      setRoom((r) =>
+        r
+          ? {
+              ...r,
+              kind: n,
+              stepReady: n === "done",
+              lock: null,
+              proposal: null,
+              message: stepMessage(n),
+              updatedAt: Date.now(),
+            }
+          : r,
+      );
+      roomFetch({ type: "continue", code: room.code, clientId: me })
+        .then((next) => {
+          const rank: Record<string, number> = { symptome: 0, cause: 1, prevention: 2, done: 3 };
+          if (rank[next.kind] >= rank[n]) setRoom(next);
+        })
+        .catch(() => undefined);
+    }
+    if (n === "done") router.push(room ? `/fresque?code=${room.code}` : "/fresque");
   }
 
   const demo = room?.code === DEMO_CODE;

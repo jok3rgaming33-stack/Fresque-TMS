@@ -1,5 +1,5 @@
 import { MESSAGES, cardById, situationById, type Kind, type SituationId } from "@/data/cards";
-import { COLORS, isCorrectPlacement, isStepComplete, nextKind } from "@/lib/game";
+import { COLORS, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
 import { DEMO_CODE, type RoomAction, type RoomState } from "@/lib/room";
 import { readCachedRoom, writeCachedRoom } from "@/lib/room-persist";
 import type { ZoneId } from "@/data/zones";
@@ -44,9 +44,13 @@ function ensureDemoRoom(): RoomState {
 
 export async function hydrateRoom(code: string) {
   const c = (code || "").toUpperCase();
-  if (!c || rooms.has(c)) return;
+  if (!c) return;
   const cached = await readCachedRoom(c);
-  if (cached) rooms.set(c, cached);
+  if (!cached) return;
+  const mem = rooms.get(c);
+  if (!mem || (cached.updatedAt || 0) >= (mem.updatedAt || 0)) {
+    rooms.set(c, cached);
+  }
 }
 
 export async function persistRoom(state: RoomState) {
@@ -215,12 +219,16 @@ export function mutate(action: RoomAction): RoomState {
   }
 
   if (action.type === "continue") {
-    if (state.kind === "done" || !state.stepReady) return state;
+    if (state.kind === "done") return state;
+    const placedZones = Object.fromEntries(Object.entries(state.placements).map(([k, v]) => [k, v.zoneId]));
+    const ready = state.stepReady || isStepComplete(state.kind, placedZones, state.situationId);
+    if (!ready) return state;
     const n = nextKind(state.kind);
     state.kind = n;
     state.stepReady = n === "done";
     state.lock = null;
     state.proposal = null;
+    state.message = stepMessage(n);
     return state;
   }
 
