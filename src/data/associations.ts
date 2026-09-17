@@ -39,3 +39,38 @@ export function associationsFor(situation: string) {
   return ASSOCIATIONS.filter((g) => g.situation === situation);
 }
 
+export const GROUP_COLORS = ["#d4af7a", "#5aa7c7", "#c44536", "#3d9a5f", "#9b59b6", "#e67e22"];
+
+function fold(s: string) {
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’]/g, "'");
+}
+
+function listed(title: string, list: string[]) {
+  const k = fold(title);
+  return list.some((t) => fold(t) === k);
+}
+
+export function debriefPaths(
+  situation: string,
+  placed: { id: string; title: string; kind: string }[],
+): { from: string; to: string; color: string; group: number }[] {
+  const links: { from: string; to: string; color: string; group: number }[] = [];
+  associationsFor(situation).forEach((g, i) => {
+    const color = GROUP_COLORS[i % GROUP_COLORS.length];
+    const ordered = [
+      ...placed.filter((c) => c.kind === "symptome" && listed(c.title, g.symptoms)),
+      ...placed.filter((c) => c.kind === "cause" && listed(c.title, g.causes)),
+      ...placed.filter((c) => c.kind === "prevention" && listed(c.title, g.preventions)),
+    ];
+    for (let n = 0; n < ordered.length - 1; n++) {
+      links.push({ from: ordered[n].id, to: ordered[n + 1].id, color, group: g.index });
+    }
+  });
+  return links;
+}
+

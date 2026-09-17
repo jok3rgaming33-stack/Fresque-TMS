@@ -616,6 +616,8 @@ export default function Board({
             debug={debug && Boolean(hostView)}
             onZone={chooseZone}
             hoverZone={hoverZone}
+            debrief={debrief}
+            situation={situationId}
           />
         </section>
 
