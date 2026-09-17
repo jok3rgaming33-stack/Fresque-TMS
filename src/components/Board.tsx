@@ -23,6 +23,7 @@ import { playLabel } from "@/lib/names";
 import BodyMap from "./BodyMap";
 import Deck from "./Deck";
 import CardDetailSheet from "./CardDetailSheet";
+import DebriefPanel from "./DebriefPanel";
 
 type Variant = "solo" | "table" | "room";
 
@@ -56,6 +57,7 @@ export default function Board({
   const [drag, setDrag] = useState<{ cardId: string; x: number; y: number } | null>(null);
   const [hoverZone, setHoverZone] = useState<ZoneId | null>(null);
   const [inspectZone, setInspectZone] = useState<ZoneId | null>(null);
+  const [soloDebrief, setSoloDebrief] = useState(false);
   const pressRef = useRef<{
     cardId: string;
     x: number;
@@ -66,6 +68,7 @@ export default function Board({
   } | null>(null);
   const roomRef = useRef(room);
   roomRef.current = room;
+  const restoredRef = useRef(false);
   const dropRef = useRef<(cardId: string, zoneId: ZoneId) => void>(() => undefined);
   const openRef = useRef<(id: string) => void>(() => undefined);
 
@@ -103,7 +106,33 @@ export default function Board({
         /* ignore */
       }
     }
-  }, [room]);
+    if (variant === "room" && room && hostView) {
+      try {
+        localStorage.setItem(`fresque-tms-room-${room.code}`, JSON.stringify(room));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [room, variant, hostView]);
+
+  useEffect(() => {
+    if (variant !== "room" || !room || !hostView || restoredRef.current) return;
+    try {
+      const raw = localStorage.getItem(`fresque-tms-room-${room.code}`);
+      if (!raw) return;
+      const snap = JSON.parse(raw) as RoomState;
+      const serverCount = Object.keys(room.placements || {}).length;
+      const snapCount = Object.keys(snap.placements || {}).length;
+      const serverPeople = room.members.filter((m) => m.role !== "hote").length;
+      const snapPeople = (snap.members || []).filter((m) => m.role !== "hote").length;
+      if (snapCount > serverCount || snapPeople > serverPeople) {
+        restoredRef.current = true;
+        roomFetch({ type: "restore", code: room.code, clientId: me, snapshot: snap }).then(setRoom);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [variant, room?.code, hostView, me]);
 
   useEffect(() => {
     if (!room || room.code !== DEMO_CODE) return;
@@ -146,6 +175,7 @@ export default function Board({
     return () => clearInterval(t);
   }, [variant, room?.code]);
 
+  const debrief = Boolean(room?.debrief) || (!room && soloDebrief);
   const liveKind: Kind | "done" = room?.kind ?? kind;
   const livePlacements: Record<string, ZoneId> = room
     ? Object.fromEntries(Object.entries(room.placements).map(([id, p]) => [id, p.zoneId]))
@@ -582,7 +612,7 @@ export default function Board({
             selected={selected && !livePlacements[selected.id] ? selected : null}
             placements={livePlacements}
             proposed={proposal ? { cardId: proposal.cardId, zoneId: proposal.zoneId } : null}
-            reveal={Boolean(room?.revealZones) && Boolean(hostView)}
+            reveal={debrief || (Boolean(room?.revealZones) && Boolean(hostView))}
             debug={debug && Boolean(hostView)}
             onZone={chooseZone}
             hoverZone={hoverZone}
@@ -590,7 +620,9 @@ export default function Board({
         </section>
 
         <div className="board-slot">
-          {inspectZone && !selectedId ? (
+          {debrief ? (
+            <DebriefPanel situation={situationId} />
+          ) : inspectZone && !selectedId ? (
             <div className="sheet p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="font-serif text-lg">{zoneLabel(inspectZone)}</p>
@@ -640,8 +672,8 @@ export default function Board({
           ) : null}
         </div>
 
-        <aside className={`board-deck ${projection ? "hidden" : ""}`}>
-          {liveKind !== "done" ? (
+        <aside className={`board-deck ${projection || debrief ? "hidden" : ""}`}>
+          {liveKind !== "done" && !debrief ? (
             <Deck
               cards={remaining}
               selectedId={selectedId}
@@ -655,7 +687,9 @@ export default function Board({
         </aside>
 
         <aside className={`board-preview ${projection ? "!hidden" : ""}`}>
-          {inspectZone && !selected ? (
+          {debrief ? (
+            <DebriefPanel situation={situationId} />
+          ) : inspectZone && !selected ? (
             <div className="sheet p-5">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="font-serif text-xl">{zoneLabel(inspectZone)}</p>
@@ -709,11 +743,24 @@ export default function Board({
         </div>
       ) : null}
 
-      {liveKind === "done" ? (
-        <div className="mt-3 flex justify-center">
-          <button type="button" onClick={() => router.push(room ? `/fresque?code=${room.code}` : "/fresque")} className="min-h-12 w-full max-w-md bg-[var(--gold)] px-8 font-bold text-[#1a140c]">
-            Voir la fresque
-          </button>
+      {liveKind === "done" || debrief ? (
+        <div className="mt-3 flex flex-col items-center gap-2">
+          {hostView ? (
+            <button
+              type="button"
+              className="min-h-12 w-full max-w-md bg-[var(--gold)] px-8 font-bold text-[#1a140c]"
+              onClick={() => {
+                if (room) roomFetch({ type: "toggle-debrief", code: room.code, clientId: me }).then(setRoom);
+                else setSoloDebrief((v) => !v);
+              }}
+            >
+              {debrief ? "Fermer le débrief" : "Lancer le débrief collectif"}
+            </button>
+          ) : debrief ? (
+            <p className="text-center text-sm text-[var(--gold)]">Débrief en cours — le formateur révèle les associations.</p>
+          ) : (
+            <p className="text-center text-sm text-[var(--muted)]">En attente du débrief formateur.</p>
+          )}
         </div>
       ) : null}
 

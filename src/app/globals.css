@@ -157,6 +157,17 @@ body {
   background: rgb(212 175 122 / 0.2);
   border-color: rgb(240 217 176 / 0.9);
 }
+.zone-caption {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
+  pointer-events: none;
+}
 .zone-badge {
   position: absolute;
   z-index: 3;

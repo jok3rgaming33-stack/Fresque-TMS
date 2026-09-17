@@ -51,7 +51,9 @@ export default function BodyMap({
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") onZone(z.id);
             }}
-          />
+          >
+            {reveal && z.stack ? <span className="zone-caption">{zoneLabel(z.id)}</span> : null}
+          </div>
         ))}
         {uniqueBody.map((z) => {
           const n = counts[z.id] ?? 0;

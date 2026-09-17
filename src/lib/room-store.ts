@@ -1,7 +1,7 @@
 import { MESSAGES, cardById, maxCopies, resolveCard, situationById, type Kind, type SituationId } from "@/data/cards";
 import { COLORS, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
 import { DEMO_CODE, type RoomAction, type RoomState } from "@/lib/room";
-import { readCachedRoom, writeCachedRoom } from "@/lib/room-persist";
+import { readPersistedRoom, writePersistedRoom } from "@/lib/room-persist";
 import type { ZoneId } from "@/data/zones";
 
 const g = globalThis as typeof globalThis & { __fresqueRooms?: Map<string, RoomState> };
@@ -45,7 +45,7 @@ function ensureDemoRoom(): RoomState {
 export async function hydrateRoom(code: string) {
   const c = (code || "").toUpperCase();
   if (!c) return;
-  const cached = await readCachedRoom(c);
+  const cached = await readPersistedRoom(c);
   if (!cached) return;
   const mem = rooms.get(c);
   if (!mem || (cached.updatedAt || 0) >= (mem.updatedAt || 0)) {
@@ -55,7 +55,7 @@ export async function hydrateRoom(code: string) {
 
 export async function persistRoom(state: RoomState) {
   rooms.set(state.code, state);
-  await writeCachedRoom(state);
+  await writePersistedRoom(state);
 }
 
 function empty(kind: Kind | "done" = "symptome", situationId: SituationId = "tampons"): Omit<RoomState, "code"> {
@@ -74,6 +74,7 @@ function empty(kind: Kind | "done" = "symptome", situationId: SituationId = "tam
     projection: false,
     stepReady: false,
     extraIds: [],
+    debrief: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -133,6 +134,34 @@ export function mutate(action: RoomAction): RoomState {
   }
 
   const code = (action.code || "").toUpperCase();
+
+  if (action.type === "restore") {
+    const snap = action.snapshot;
+    if (!snap || (snap.code || "").toUpperCase() !== code) throw new Error("Sauvegarde invalide");
+    const existing = rooms.get(code);
+    if (!existing) {
+      const restored: RoomState = { ...snap, code, updatedAt: Date.now() };
+      rooms.set(code, restored);
+      return restored;
+    }
+    if (!isHost(existing, action.clientId) && existing.members.length > 0) return existing;
+    const members = [...existing.members];
+    for (const m of snap.members || []) {
+      if (!members.some((x) => x.id === m.id)) members.push(m);
+    }
+    const placements = { ...(snap.placements || {}), ...existing.placements };
+    const next: RoomState = {
+      ...existing,
+      ...snap,
+      code,
+      members,
+      placements,
+      updatedAt: Date.now(),
+    };
+    rooms.set(code, next);
+    return next;
+  }
+
   if (code === DEMO_CODE) ensureDemoRoom();
 
   const state = rooms.get(code);
@@ -323,6 +352,16 @@ export function mutate(action: RoomAction): RoomState {
   if (action.type === "toggle-projection") {
     if (!isHost(state, me.id)) return state;
     state.projection = !state.projection;
+    return state;
+  }
+  if (action.type === "toggle-debrief") {
+    if (!isHost(state, me.id)) return state;
+    state.debrief = !state.debrief;
+    if (state.debrief) {
+      state.kind = "done";
+      state.revealZones = true;
+      state.stepReady = true;
+    }
     return state;
   }
   if (action.type === "remove-card") {
