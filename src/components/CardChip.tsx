@@ -21,8 +21,11 @@ export default function CardChip({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(e) => {
+        if (e.detail === 0) onClick();
+      }}
       onPointerDown={(e) => onPress?.(e, card.id)}
+      onContextMenu={(e) => e.preventDefault()}
       className={`chip chip-${card.kind} ${selected ? "chip-selected" : ""} ${heldBy ? "chip-held" : ""} ${blinking ? "chip-error" : ""}`}
       aria-pressed={selected}
     >

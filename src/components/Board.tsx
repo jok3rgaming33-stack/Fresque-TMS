@@ -50,18 +50,18 @@ export default function Board({
   const [room, setRoom] = useState<RoomState | null>(initialRoom ?? null);
   const [soloSituation, setSoloSituation] = useState<SituationId>(situationProp ?? "tampons");
   const [drag, setDrag] = useState<{ cardId: string; x: number; y: number } | null>(null);
+  const [hoverZone, setHoverZone] = useState<ZoneId | null>(null);
   const pressRef = useRef<{
     cardId: string;
     x: number;
     y: number;
     timer: number;
     dragging: boolean;
-    skipClick: boolean;
   } | null>(null);
   const roomRef = useRef(room);
   roomRef.current = room;
-  const skipClickRef = useRef(false);
   const dropRef = useRef<(cardId: string, zoneId: ZoneId) => void>(() => undefined);
+  const openRef = useRef<(id: string) => void>(() => undefined);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -153,15 +153,34 @@ export default function Board({
   }
 
   function openCard(id: string) {
-    if (skipClickRef.current) {
-      skipClickRef.current = false;
-      return;
-    }
     const card = cardById(id);
     if (!card) return;
     if (liveKind !== "done" && card.kind !== liveKind && !livePlacements[id]) return;
-    setSelectedId(selectedId === id ? null : id);
-    if (selectedId !== id) setMessage(MESSAGES.help);
+    setSelectedId((cur) => (cur === id ? null : id));
+  }
+
+  function zoneAtPoint(x: number, y: number): ZoneId | null {
+    const nodes = document.querySelectorAll<HTMLElement>("[data-zone-id]");
+    let best: { id: ZoneId; area: number } | null = null;
+    for (const n of nodes) {
+      const r = n.getBoundingClientRect();
+      const pad = 16;
+      if (x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad) {
+        const area = Math.max(1, r.width * r.height);
+        const id = n.dataset.zoneId as ZoneId;
+        if (!best || area < best.area) best = { id, area };
+      }
+    }
+    return best?.id ?? null;
+  }
+
+  function lockPage(on: boolean) {
+    document.documentElement.classList.toggle("dragging-card", on);
+    if (!on) {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
   }
 
   async function dropCard(cardId: string, zoneId: ZoneId) {
@@ -169,37 +188,50 @@ export default function Board({
     if (!card) return;
     if (liveKind !== "done" && card.kind !== liveKind) return;
 
-    if (variant === "room" && room) {
-      try {
-        const next = await roomFetch({ type: "propose", code: room.code, clientId: me, zoneId, cardId });
-        setRoom(next);
-        if (next.placements[cardId]) setSelectedId(null);
-      } catch (e) {
-        setMessage(e instanceof Error ? e.message : "Impossible");
-      }
-      return;
-    }
-
     if (!isCorrectPlacement(card, zoneId)) {
       flash(card.id);
       setMessage(MESSAGES.error);
       return;
     }
-    const next = { ...livePlacements, [card.id]: zoneId };
-    setPlacements(next);
+
+    const nextPlacements = { ...livePlacements, [card.id]: zoneId };
+    const done = liveKind !== "done" && isStepComplete(liveKind, nextPlacements, situationId);
     setSelectedId(null);
-    if (liveKind !== "done" && isStepComplete(liveKind, next, situationId)) {
-      setMessage(liveKind === "symptome" ? MESSAGES.afterSymptoms : liveKind === "cause" ? MESSAGES.afterCauses : MESSAGES.done);
-    } else {
-      setMessage(null);
+    if (variant === "room" && room) {
+      setRoom((r) =>
+        r
+          ? {
+              ...r,
+              placements: { ...r.placements, [cardId]: { zoneId, by: me, at: Date.now() } },
+              blinkingId: null,
+              lock: null,
+              proposal: null,
+              stepReady: done,
+              message: done ? (liveKind === "symptome" ? MESSAGES.afterSymptoms : liveKind === "cause" ? MESSAGES.afterCauses : MESSAGES.done) : null,
+              updatedAt: Date.now(),
+            }
+          : r,
+      );
+      try {
+        const next = await roomFetch({ type: "propose", code: room.code, clientId: me, zoneId, cardId });
+        if (next.placements[cardId]) setRoom(next);
+      } catch {
+        /* keep optimistic placement */
+      }
+      return;
     }
+
+    setPlacements(nextPlacements);
+    setMessage(done ? (liveKind === "symptome" ? MESSAGES.afterSymptoms : liveKind === "cause" ? MESSAGES.afterCauses : MESSAGES.done) : null);
   }
 
   function chooseZone(zoneId: ZoneId) {
+    if (drag) return;
     if (selectedId && !livePlacements[selectedId]) dropCard(selectedId, zoneId);
   }
 
   dropRef.current = dropCard;
+  openRef.current = openCard;
 
   function onCardPress(e: ReactPointerEvent, cardId: string) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -212,17 +244,15 @@ export default function Board({
       x: e.clientX,
       y: e.clientY,
       dragging: false,
-      skipClick: false,
       timer: window.setTimeout(() => {
         const p = pressRef.current;
         if (!p || p.cardId !== cardId) return;
         p.dragging = true;
-        p.skipClick = true;
-        skipClickRef.current = true;
-        setSelectedId(cardId);
+        setSelectedId(null);
         setDrag({ cardId, x: p.x, y: p.y });
+        lockPage(true);
         if (navigator.vibrate) navigator.vibrate(12);
-      }, 180),
+      }, 220),
     };
   }
 
@@ -232,7 +262,7 @@ export default function Board({
       if (!p) return;
       const dist = Math.hypot(e.clientX - p.x, e.clientY - p.y);
       if (!p.dragging) {
-        if (dist > 10) {
+        if (dist > 8) {
           window.clearTimeout(p.timer);
           pressRef.current = null;
         }
@@ -242,29 +272,37 @@ export default function Board({
       p.x = e.clientX;
       p.y = e.clientY;
       setDrag({ cardId: p.cardId, x: e.clientX, y: e.clientY });
+      setHoverZone(zoneAtPoint(e.clientX, e.clientY));
+    }
+    function touchMove(e: TouchEvent) {
+      if (pressRef.current?.dragging) e.preventDefault();
     }
     function up(e: PointerEvent) {
       const p = pressRef.current;
       pressRef.current = null;
       if (!p) return;
       window.clearTimeout(p.timer);
-      if (!p.dragging) return;
+      if (!p.dragging) {
+        const dist = Math.hypot(e.clientX - p.x, e.clientY - p.y);
+        if (dist < 8) openRef.current(p.cardId);
+        return;
+      }
+      lockPage(false);
+      const zoneId = zoneAtPoint(e.clientX, e.clientY);
       setDrag(null);
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const zone = el?.closest("[data-zone-id]") as HTMLElement | null;
-      const zoneId = zone?.dataset.zoneId as ZoneId | undefined;
+      setHoverZone(null);
       if (zoneId) dropRef.current(p.cardId, zoneId);
-      window.setTimeout(() => {
-        skipClickRef.current = false;
-      }, 80);
     }
     window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("touchmove", touchMove, { passive: false });
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
     return () => {
       window.removeEventListener("pointermove", move);
+      window.removeEventListener("touchmove", touchMove);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      lockPage(false);
     };
   }, []);
 
@@ -450,6 +488,7 @@ export default function Board({
             debug={debug && Boolean(hostView)}
             onZone={chooseZone}
             onPin={(id) => setSelectedId(id)}
+            hoverZone={hoverZone}
           />
         </section>
 

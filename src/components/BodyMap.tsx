@@ -12,6 +12,7 @@ export default function BodyMap({
   debug,
   onZone,
   onPin,
+  hoverZone,
 }: {
   selected: Card | null;
   placements: Record<string, ZoneId>;
@@ -21,6 +22,7 @@ export default function BodyMap({
   debug?: boolean;
   onZone: (id: ZoneId) => void;
   onPin?: (cardId: string) => void;
+  hoverZone?: ZoneId | null;
   projection?: boolean;
   scale?: number;
 }) {
@@ -46,7 +48,7 @@ export default function BodyMap({
           tabIndex={0}
           aria-label={reveal || debug ? z.label : "Zone du corps"}
           data-zone-id={z.id}
-          className={`zone-hot ${selected ? "pulse" : ""} ${debug || reveal ? "debug" : ""}`}
+          className={`zone-hot ${selected || hoverZone ? "pulse" : ""} ${hoverZone === z.id ? "drop-ok" : ""} ${debug || reveal ? "debug" : ""}`}
           style={z.style}
           onClick={() => onZone(z.id)}
           onKeyDown={(e) => {
