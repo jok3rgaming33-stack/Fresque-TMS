@@ -1,4 +1,4 @@
-import { MESSAGES, cardById, situationById, type Kind, type SituationId } from "@/data/cards";
+import { MESSAGES, cardById, maxCopies, resolveCard, situationById, type Kind, type SituationId } from "@/data/cards";
 import { COLORS, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
 import { DEMO_CODE, type RoomAction, type RoomState } from "@/lib/room";
 import { readCachedRoom, writeCachedRoom } from "@/lib/room-persist";
@@ -73,17 +73,19 @@ function empty(kind: Kind | "done" = "symptome", situationId: SituationId = "tam
     revealZones: false,
     projection: false,
     stepReady: false,
+    extraIds: [],
     updatedAt: Date.now(),
   };
 }
 
 function applyPlacement(state: RoomState, cardId: string, zoneId: ZoneId, by: string) {
-  const card = cardById(cardId);
+  const card = resolveCard(cardId);
   if (!card) return;
   state.proposal = null;
   state.lock = null;
   state.blinkingId = null;
-  if (!isCorrectPlacement(card, zoneId)) {
+  const placedZones = Object.fromEntries(Object.entries(state.placements).map(([k, v]) => [k, v.zoneId]));
+  if (!isCorrectPlacement(card, zoneId, placedZones)) {
     state.blinkingId = cardId;
     state.message = MESSAGES.error;
     setTimeout(() => {
@@ -97,8 +99,8 @@ function applyPlacement(state: RoomState, cardId: string, zoneId: ZoneId, by: st
   }
   state.placements[cardId] = { zoneId, by, at: Date.now() };
   if (state.kind === "done") return;
-  const placedZones = Object.fromEntries(Object.entries(state.placements).map(([k, v]) => [k, v.zoneId]));
-  if (isStepComplete(state.kind, placedZones, state.situationId)) {
+  const after = Object.fromEntries(Object.entries(state.placements).map(([k, v]) => [k, v.zoneId]));
+  if (isStepComplete(state.kind, after, state.situationId)) {
     state.stepReady = true;
     state.message = state.kind === "symptome" ? MESSAGES.afterSymptoms : state.kind === "cause" ? MESSAGES.afterCauses : MESSAGES.done;
   } else {
@@ -175,7 +177,7 @@ export function mutate(action: RoomAction): RoomState {
   if (action.type === "propose") {
     const cardId = (state.lock?.by === me.id ? state.lock.cardId : null) || action.cardId;
     if (!cardId) throw new Error("Tenez d'abord une carte");
-    const card = cardById(cardId);
+    const card = resolveCard(cardId);
     if (!card || card.kind !== state.kind || state.placements[cardId]) {
       throw new Error("Cette carte n'est pas disponible");
     }
@@ -253,6 +255,7 @@ export function mutate(action: RoomAction): RoomState {
       code: state.code,
       ...empty("symptome", state.situationId),
       members,
+      extraIds: [],
       mode: isDemo(state) ? "guide" : "atelier",
     };
     rooms.set(state.code, next);
@@ -275,9 +278,30 @@ export function mutate(action: RoomAction): RoomState {
     return state;
   }
   if (action.type === "remove-card") {
-    if (!isHost(state, me.id)) return state;
+    if (!isHost(state, me.id) && !isDemo(state)) return state;
     delete state.placements[action.cardId];
+    state.extraIds = (state.extraIds || []).filter((id) => id !== action.cardId);
     state.stepReady = false;
+    return state;
+  }
+
+  if (action.type === "add-copy") {
+    const source = resolveCard(action.cardId);
+    if (!source || source.kind !== state.kind) return state;
+    const extras = state.extraIds || [];
+    const placed = Object.keys(state.placements).filter((id) => resolveCard(id)?.title === source.title);
+    const pending = extras.filter((id) => resolveCard(id)?.title === source.title && !state.placements[id]);
+    const count = 1 + extras.filter((id) => resolveCard(id)?.title === source.title).length;
+    if (count >= maxCopies(source.kind, state.situationId, source.title)) return state;
+    if (pending.length > 0) return state;
+    let n = 2;
+    let nid = `${source.baseId}~${n}`;
+    const used = new Set([...extras, ...Object.keys(state.placements), source.baseId]);
+    while (used.has(nid)) {
+      n += 1;
+      nid = `${source.baseId}~${n}`;
+    }
+    state.extraIds = [...extras, nid];
     return state;
   }
 

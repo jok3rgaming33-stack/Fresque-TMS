@@ -9,6 +9,7 @@ export type SoloSave = {
   placements: Record<string, ZoneId>;
   theme: "dark" | "light";
   understood: string[];
+  extraIds?: string[];
 };
 
 export function loadSolo(): SoloSave | null {

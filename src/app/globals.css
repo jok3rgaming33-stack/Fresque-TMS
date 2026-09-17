@@ -163,7 +163,12 @@ body {
   padding: 4px;
   overflow-y: auto;
   min-height: 0;
-  flex: 1;
+  max-height: 72%;
+  pointer-events: auto;
+}
+html.dragging-card .zone-stack,
+html.dragging-card .placed-chip {
+  pointer-events: none;
 }
 .placed-chip {
   flex: 0 0 auto;

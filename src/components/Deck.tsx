@@ -25,12 +25,6 @@ export default function Deck({
   detail?: ReactNode;
 }) {
   const selectedRef = useRef<HTMLDivElement | null>(null);
-  const families = new Map<string, Card[]>();
-  for (const c of cards) {
-    const arr = families.get(c.family) ?? [];
-    arr.push(c);
-    families.set(c.family, arr);
-  }
 
   useEffect(() => {
     if (!selectedId || !detail) return;
@@ -38,26 +32,19 @@ export default function Deck({
   }, [selectedId, detail]);
 
   return (
-    <div className="space-y-4">
-      {[...families.entries()].map(([fam, list]) => (
-        <section key={fam}>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">{fam}</h2>
-          <div className="grid grid-cols-1 gap-2">
-            {list.map((c) => (
-              <div key={c.id} ref={selectedId === c.id ? selectedRef : undefined}>
-                <CardChip
-                  card={c}
-                  selected={selectedId === c.id}
-                  heldBy={lock?.cardId === c.id ? members?.find((m) => m.id === lock.by)?.name : null}
-                  blinking={blinkingId === c.id}
-                  onClick={() => onSelect(c.id)}
-                  onPress={onPress}
-                />
-                {selectedId === c.id && detail ? <div className="mt-2 lg:hidden">{detail}</div> : null}
-              </div>
-            ))}
-          </div>
-        </section>
+    <div className="grid grid-cols-1 gap-2">
+      {cards.map((c) => (
+        <div key={c.id} ref={selectedId === c.id ? selectedRef : undefined}>
+          <CardChip
+            card={c}
+            selected={selectedId === c.id}
+            heldBy={lock?.cardId === c.id ? members?.find((m) => m.id === lock.by)?.name : null}
+            blinking={blinkingId === c.id}
+            onClick={() => onSelect(c.id)}
+            onPress={onPress}
+          />
+          {selectedId === c.id && detail ? <div className="mt-2 lg:hidden">{detail}</div> : null}
+        </div>
       ))}
     </div>
   );

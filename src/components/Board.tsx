@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import {
   KIND_LABEL,
   MESSAGES,
-  cardsOf,
   cardById,
-  cardsFor,
+  uniqueCardsOf,
+  shuffleSeeded,
+  resolveCard,
+  maxCopies,
   situationById,
   type Kind,
   type SituationId,
@@ -49,6 +51,7 @@ export default function Board({
   const [actor, setActor] = useState("Léa");
   const [room, setRoom] = useState<RoomState | null>(initialRoom ?? null);
   const [soloSituation, setSoloSituation] = useState<SituationId>(situationProp ?? "tampons");
+  const [extraIds, setExtraIds] = useState<string[]>([]);
   const [drag, setDrag] = useState<{ cardId: string; x: number; y: number } | null>(null);
   const [hoverZone, setHoverZone] = useState<ZoneId | null>(null);
   const pressRef = useRef<{
@@ -57,6 +60,7 @@ export default function Board({
     y: number;
     timer: number;
     dragging: boolean;
+    mouse: boolean;
   } | null>(null);
   const roomRef = useRef(room);
   roomRef.current = room;
@@ -76,6 +80,7 @@ export default function Board({
       setTheme(s.theme);
       setUnderstood(s.understood);
       if (s.situationId) setSoloSituation(s.situationId);
+      if (s.extraIds) setExtraIds(s.extraIds);
       setMessage(stepMessage(s.kind));
     }
   }, [variant]);
@@ -85,8 +90,8 @@ export default function Board({
 
   useEffect(() => {
     if (variant !== "solo") return;
-    saveSolo({ kind, situationId, placements, theme, understood });
-  }, [variant, kind, situationId, placements, theme, understood]);
+    saveSolo({ kind, situationId, placements, theme, understood, extraIds });
+  }, [variant, kind, situationId, placements, theme, understood, extraIds]);
 
   useEffect(() => {
     if (room?.code === DEMO_CODE) {
@@ -140,12 +145,21 @@ export default function Board({
     : placements;
   const liveMessage = room?.message ?? message;
   const liveBlink = room?.blinkingId ?? blinkingId;
-  const selected = selectedId ? cardById(selectedId) ?? null : null;
+  const selected = selectedId ? resolveCard(selectedId) ?? null : null;
   const stepKind = liveKind === "done" ? "prevention" : liveKind;
-  const deck = cardsFor(situationId);
-  const remaining = deck.filter((c) => c.kind === stepKind && !livePlacements[c.id]);
-  const total = cardsOf(stepKind, situationId).length;
-  const placedCount = total - remaining.length;
+  const liveExtras = room ? room.extraIds ?? [] : extraIds;
+  const remaining = shuffleSeeded(
+    [
+      ...uniqueCardsOf(stepKind, situationId),
+      ...liveExtras.map((id) => resolveCard(id)).filter((c): c is NonNullable<typeof c> => Boolean(c)),
+    ].filter((c) => c.kind === stepKind && !livePlacements[c.id]),
+    `${situationId}|${stepKind}|${room?.code ?? "solo"}`,
+  );
+  const uniques = uniqueCardsOf(stepKind, situationId);
+  const total = uniques.length;
+  const placedCount = uniques.filter((c) =>
+    Object.keys(livePlacements).some((id) => resolveCard(id)?.title === c.title),
+  ).length;
   const complete = liveKind !== "done" && isStepComplete(liveKind, livePlacements, situationId);
   const members: Member[] = room?.members ?? tableNames.map((n, i) => ({ id: n, name: n, color: "#3D9A5F", role: i === 0 ? "hote" : "collaborateur" }));
 
@@ -155,7 +169,7 @@ export default function Board({
   }
 
   function openCard(id: string) {
-    const card = cardById(id);
+    const card = resolveCard(id);
     if (!card) return;
     if (liveKind !== "done" && card.kind !== liveKind && !livePlacements[id]) return;
     setSelectedId((cur) => (cur === id ? null : id));
@@ -186,11 +200,11 @@ export default function Board({
   }
 
   async function dropCard(cardId: string, zoneId: ZoneId) {
-    const card = cardById(cardId);
+    const card = resolveCard(cardId);
     if (!card) return;
     if (liveKind !== "done" && card.kind !== liveKind) return;
 
-    if (!isCorrectPlacement(card, zoneId)) {
+    if (!isCorrectPlacement(card, zoneId, livePlacements)) {
       flash(card.id);
       setMessage(MESSAGES.error);
       return;
@@ -237,24 +251,28 @@ export default function Board({
 
   function onCardPress(e: ReactPointerEvent, cardId: string) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    const card = cardById(cardId);
+    const card = resolveCard(cardId);
     if (!card || livePlacements[cardId]) return;
     if (liveKind !== "done" && card.kind !== liveKind) return;
     window.clearTimeout(pressRef.current?.timer);
+    const mouse = e.pointerType === "mouse";
     pressRef.current = {
       cardId,
       x: e.clientX,
       y: e.clientY,
       dragging: false,
-      timer: window.setTimeout(() => {
-        const p = pressRef.current;
-        if (!p || p.cardId !== cardId) return;
-        p.dragging = true;
-        setSelectedId(null);
-        setDrag({ cardId, x: p.x, y: p.y });
-        lockPage(true);
-        if (navigator.vibrate) navigator.vibrate(12);
-      }, 220),
+      mouse,
+      timer: mouse
+        ? 0
+        : window.setTimeout(() => {
+            const p = pressRef.current;
+            if (!p || p.cardId !== cardId) return;
+            p.dragging = true;
+            setSelectedId(null);
+            setDrag({ cardId, x: p.x, y: p.y });
+            lockPage(true);
+            if (navigator.vibrate) navigator.vibrate(12);
+          }, 220),
     };
   }
 
@@ -264,11 +282,18 @@ export default function Board({
       if (!p) return;
       const dist = Math.hypot(e.clientX - p.x, e.clientY - p.y);
       if (!p.dragging) {
-        if (dist > 8) {
+        if (p.mouse && dist > 5) {
+          p.dragging = true;
+          setSelectedId(null);
+          setDrag({ cardId: p.cardId, x: e.clientX, y: e.clientY });
+          lockPage(true);
+        } else if (!p.mouse && dist > 8) {
           window.clearTimeout(p.timer);
           pressRef.current = null;
+          return;
+        } else {
+          return;
         }
-        return;
       }
       e.preventDefault();
       p.x = e.clientX;
@@ -353,7 +378,34 @@ export default function Board({
     setKind("symptome");
     setPlacements({});
     setSelectedId(null);
+    setExtraIds([]);
     setMessage(MESSAGES.start);
+  }
+
+  function addCopy(cardId: string) {
+    const card = resolveCard(cardId);
+    if (!card) return;
+    if (variant === "room" && room) {
+      roomFetch({ type: "add-copy", code: room.code, clientId: me, cardId }).then(setRoom);
+      return;
+    }
+    const extras = extraIds.filter((id) => resolveCard(id)?.title === card.title);
+    if (1 + extras.length >= maxCopies(card.kind, situationId, card.title)) return;
+    if (extras.some((id) => !livePlacements[id])) return;
+    let n = 2;
+    let nid = `${card.baseId}~${n}`;
+    const used = new Set([...extraIds, ...Object.keys(livePlacements), card.baseId]);
+    while (used.has(nid)) {
+      n += 1;
+      nid = `${card.baseId}~${n}`;
+    }
+    setExtraIds((xs) => [...xs, nid]);
+  }
+
+  function canAddCopy(card: NonNullable<typeof selected>) {
+    const extras = liveExtras.filter((id) => resolveCard(id)?.title === card.title);
+    const pending = extras.filter((id) => !livePlacements[id]);
+    return pending.length === 0 && 1 + extras.length < maxCopies(card.kind, situationId, card.title);
   }
 
   const proposal = room?.proposal;
@@ -527,8 +579,9 @@ export default function Board({
                 placedZone={livePlacements[selected.id]}
                 revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
                 onClose={() => setSelectedId(null)}
+                onAddCopy={canAddCopy(selected) ? () => addCopy(selected.id) : undefined}
                 onRemove={
-                  variant !== "room" || hostView
+                  variant !== "room" || hostView || demo
                     ? () => {
                         if (variant === "room" && room) {
                           roomFetch({ type: "remove-card", code: room.code, clientId: me, cardId: selected.id }).then(setRoom);
@@ -553,8 +606,9 @@ export default function Board({
               revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
               onPress={onCardPress}
               onClose={() => setSelectedId(null)}
+              onAddCopy={livePlacements[selected.id] && canAddCopy(selected) ? () => addCopy(selected.id) : undefined}
               onRemove={
-                livePlacements[selected.id] && (variant !== "room" || hostView)
+                livePlacements[selected.id] && (variant !== "room" || hostView || demo)
                   ? () => {
                       if (variant === "room" && room) {
                         roomFetch({ type: "remove-card", code: room.code, clientId: me, cardId: selected.id }).then(setRoom);

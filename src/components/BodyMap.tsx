@@ -1,6 +1,6 @@
 "use client";
 
-import { CARDS, type Card } from "@/data/cards";
+import { resolveCard, type Card } from "@/data/cards";
 import { ZONES, type ZoneId } from "@/data/zones";
 
 export default function BodyMap({
@@ -28,7 +28,7 @@ export default function BodyMap({
 }) {
   const byZone: Record<string, Card[]> = {};
   for (const [id, zoneId] of Object.entries(placements)) {
-    const card = CARDS.find((c) => c.id === id);
+    const card = resolveCard(id);
     if (!card) continue;
     (byZone[zoneId] ??= []).push(card);
   }
@@ -41,9 +41,9 @@ export default function BodyMap({
         alt="Personnage technicien"
         className="mx-auto block h-auto w-full max-h-[52vh] object-contain lg:max-h-[78vh]"
       />
-      {ZONES.map((z) => (
+      {ZONES.map((z, i) => (
         <div
-          key={z.id}
+          key={`${z.id}-${i}`}
           role="button"
           tabIndex={0}
           aria-label={reveal || debug ? z.label : "Zone du corps"}
@@ -55,21 +55,23 @@ export default function BodyMap({
             if (e.key === "Enter" || e.key === " ") onZone(z.id);
           }}
         >
-          <div className="zone-stack">
-            {(byZone[z.id] ?? []).map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                className={`placed-chip placed-${card.kind} ${blinkingId === card.id ? "chip-error" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPin?.(card.id);
-                }}
-              >
-                {card.title}
-              </button>
-            ))}
-          </div>
+          {z.stack ? (
+            <div className="zone-stack">
+              {(byZone[z.id] ?? []).map((card) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  className={`placed-chip placed-${card.kind} ${blinkingId === card.id ? "chip-error" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPin?.(card.id);
+                  }}
+                >
+                  {card.title}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       ))}
       {proposed ? (

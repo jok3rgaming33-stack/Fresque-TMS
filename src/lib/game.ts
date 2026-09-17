@@ -1,12 +1,23 @@
-import { CARDS, cardsOf, MESSAGES, type Card, type Kind } from "@/data/cards";
+import { CARDS, MESSAGES, resolveCard, uniqueCardsOf, type Card, type Kind } from "@/data/cards";
 import type { ZoneId } from "@/data/zones";
 
-export function isCorrectPlacement(card: Card, zoneId: ZoneId) {
-  return card.zones.includes(zoneId);
+export function isCorrectPlacement(card: Card, zoneId: ZoneId, placements?: Record<string, ZoneId>) {
+  if (!card.zones.includes(zoneId)) return false;
+  if (!placements) return true;
+  const taken = Object.entries(placements).some(([id, z]) => {
+    if (id === card.id || z !== zoneId) return false;
+    return resolveCard(id)?.baseId === card.baseId || resolveCard(id)?.title === card.title;
+  });
+  return !taken;
 }
 
 export function isStepComplete(kind: Kind, placements: Record<string, ZoneId>, situation?: string | null) {
-  return cardsOf(kind, situation).every((c) => placements[c.id] && c.zones.includes(placements[c.id]));
+  return uniqueCardsOf(kind, situation).every((c) =>
+    Object.entries(placements).some(([id, zone]) => {
+      const placed = resolveCard(id);
+      return placed && placed.title === c.title && placed.kind === kind && c.zones.includes(zone);
+    }),
+  );
 }
 
 export function nextKind(kind: Kind): Kind | "done" {

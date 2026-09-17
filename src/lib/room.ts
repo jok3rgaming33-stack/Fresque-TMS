@@ -29,6 +29,7 @@ export type RoomState = {
   revealZones: boolean;
   projection: boolean;
   stepReady: boolean;
+  extraIds: string[];
   updatedAt: number;
 };
 
@@ -48,7 +49,8 @@ export type RoomAction =
   | { type: "toggle-mode"; code: string; clientId: string }
   | { type: "toggle-reveal"; code: string; clientId: string }
   | { type: "toggle-projection"; code: string; clientId: string }
-  | { type: "remove-card"; code: string; clientId: string; cardId: string };
+  | { type: "remove-card"; code: string; clientId: string; cardId: string }
+  | { type: "add-copy"; code: string; clientId: string; cardId: string };
 
 export async function roomFetch(action: RoomAction): Promise<RoomState> {
   const res = await fetch("/api/room", {

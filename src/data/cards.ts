@@ -276,11 +276,71 @@ export function cardsFor(situation: string | null | undefined) {
 }
 
 export function cardById(id: string) {
-  return CARDS.find((c) => c.id === id);
+  return resolveCard(id);
 }
 
 export function cardsOf(kind: Kind, situation?: string | null) {
   return cardsFor(situation).filter((c) => c.kind === kind);
+}
+
+function titleKey(c: Pick<Card, "title">) {
+  return c.title.trim().toLowerCase();
+}
+
+export function uniqueCardsOf(kind: Kind, situation?: string | null) {
+  const seen = new Set<string>();
+  const out: Card[] = [];
+  for (const c of cardsOf(kind, situation)) {
+    const k = titleKey(c);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({ ...c, zones: unionZones(kind, situation, c.title) });
+  }
+  return out;
+}
+
+export function unionZones(kind: Kind, situation: string | null | undefined, title: string): ZoneId[] {
+  const key = title.trim().toLowerCase();
+  const zs: ZoneId[] = [];
+  for (const c of cardsOf(kind, situation)) {
+    if (c.title.trim().toLowerCase() !== key) continue;
+    for (const z of c.zones) if (!zs.includes(z)) zs.push(z);
+  }
+  return zs;
+}
+
+export function maxCopies(kind: Kind, situation: string | null | undefined, title: string) {
+  const key = title.trim().toLowerCase();
+  return Math.max(1, cardsOf(kind, situation).filter((c) => c.title.trim().toLowerCase() === key).length);
+}
+
+export function canonicalCard(kind: Kind, situation: string | null | undefined, title: string) {
+  return uniqueCardsOf(kind, situation).find((c) => titleKey(c) === title.trim().toLowerCase());
+}
+
+export function resolveCard(id: string): Card | undefined {
+  const extra = /^(.*)~(\d+)$/.exec(id);
+  const baseId = extra ? extra[1] : id;
+  const found = CARDS.find((c) => c.id === baseId);
+  if (!found) return CARDS.find((c) => c.id === id);
+  const card = { ...found, id, zones: unionZones(found.kind, found.situation, found.title) };
+  return card;
+}
+
+export function shuffleSeeded<T>(items: T[], seed: string): T[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    h ^= h << 13;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    const j = Math.abs(h) % (i + 1);
+    const t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+  }
+  return a;
 }
 
 export const KIND_LABEL: Record<Kind | "done", string> = {
@@ -296,6 +356,6 @@ export const MESSAGES = {
   afterCauses: "Causes validées. Les moyens de prévention sont déverrouillés.",
   done: "Parcours terminé : symptômes, causes et préventions sont en place.",
   error: "Mauvais emplacement : la carte revient dans le jeu.",
-  help: "Touchez une carte pour la lire. Maintenez puis glissez-la sur une zone du corps.",
+  help: "Cliquez pour lire. Glissez ensuite vers une zone. Sur téléphone : maintenez puis glissez.",
 };
 

@@ -11,6 +11,7 @@ export default function CardDetailSheet({
   onClose,
   onRemove,
   onPress,
+  onAddCopy,
 }: {
   card: Card;
   placedZone?: ZoneId;
@@ -18,6 +19,7 @@ export default function CardDetailSheet({
   onClose: () => void;
   onRemove?: () => void;
   onPress?: (e: ReactPointerEvent, cardId: string) => void;
+  onAddCopy?: () => void;
 }) {
   const showZones = Boolean(revealZones);
   return (
@@ -50,6 +52,11 @@ export default function CardDetailSheet({
             <p className="mt-2 text-sm text-[var(--muted)]">Maintenez la carte, puis glissez-la sur une zone du corps.</p>
           )}
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            {onAddCopy ? (
+              <button type="button" onClick={onAddCopy} className="min-h-11 flex-1 border border-[var(--line)] px-4 font-semibold">
+                Ajouter un exemplaire
+              </button>
+            ) : null}
             {placedZone && onRemove ? (
               <button type="button" onClick={onRemove} className="min-h-11 flex-1 border border-[var(--line)] px-4 font-semibold">
                 Retirer
