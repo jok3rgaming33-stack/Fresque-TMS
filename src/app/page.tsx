@@ -8,7 +8,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center px-5 py-12">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/perso.jpg" alt="" className="mx-auto mb-6 h-28 w-auto object-contain sm:h-36" />
+      <img src="/perso.png" alt="" className="mx-auto mb-6 h-28 w-auto object-contain sm:h-36" />
       <Brand />
       <p className="mx-auto mt-4 max-w-md text-center text-sm leading-relaxed text-[var(--muted)]">
         Atelier collectif pour relier <span className="text-[var(--text)]">symptômes</span>,{" "}

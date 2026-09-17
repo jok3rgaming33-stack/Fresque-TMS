@@ -37,7 +37,7 @@ export default function BodyMap({
     <div className="relative mx-auto w-fit max-w-full">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/perso.jpg"
+        src="/perso.png"
         alt="Personnage technicien"
         className="block h-auto max-h-[min(68vh,720px)] w-auto max-w-full"
       />
