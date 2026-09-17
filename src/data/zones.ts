@@ -8,12 +8,11 @@ export type Zone = {
 };
 
 export const ZONES: Zone[] = [
-  { id: "cou", label: "Cou / cervicales", style: { top: "17%", left: "41%", width: "18%", height: "7%" }, stack: true },
-  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "24%", left: "5%", width: "28%", height: "20%" }, stack: true },
-  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "24%", left: "67%", width: "28%", height: "20%" } },
-  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "24%", left: "36%", width: "28%", height: "8%" } },
-  { id: "lombaires", label: "Zone lombaire", style: { top: "46%", left: "36%", width: "28%", height: "12%" }, stack: true },
-  { id: "membres-inferieurs", label: "Membres inférieurs", style: { top: "63%", left: "30%", width: "40%", height: "26%" }, stack: true },
+  { id: "cou", label: "Cou / cervicales", style: { top: "18%", left: "42%", width: "16%", height: "7%" }, stack: true },
+  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "26%", left: "8%", width: "26%", height: "18%" }, stack: true },
+  { id: "membres-superieurs", label: "Membres supérieurs", style: { top: "26%", left: "66%", width: "26%", height: "18%" } },
+  { id: "lombaires", label: "Zone lombaire", style: { top: "48%", left: "37%", width: "26%", height: "11%" }, stack: true },
+  { id: "membres-inferieurs", label: "Membres inférieurs", style: { top: "64%", left: "31%", width: "38%", height: "24%" }, stack: true },
 ];
 
 export function zoneLabel(id: ZoneId) {

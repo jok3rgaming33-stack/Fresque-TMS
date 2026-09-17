@@ -34,12 +34,12 @@ export default function BodyMap({
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-[min(100%,520px)]">
+    <div className="relative mx-auto w-fit max-w-full">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/perso.jpg"
         alt="Personnage technicien"
-        className="mx-auto block h-auto w-full max-h-[52vh] object-contain lg:max-h-[78vh]"
+        className="block h-auto max-h-[min(68vh,720px)] w-auto max-w-full"
       />
       {ZONES.map((z, i) => (
         <div
