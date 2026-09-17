@@ -24,46 +24,51 @@ export default function BodyMap({
   projection?: boolean;
   scale?: number;
 }) {
+  const byZone: Record<string, Card[]> = {};
+  for (const [id, zoneId] of Object.entries(placements)) {
+    const card = CARDS.find((c) => c.id === id);
+    if (!card) continue;
+    (byZone[zoneId] ??= []).push(card);
+  }
+
   return (
-    <div className="relative mx-auto w-full max-w-[min(100%,520px)] overflow-hidden">
+    <div className="relative mx-auto w-full max-w-[min(100%,520px)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/perso.jpg"
         alt="Personnage technicien"
-        className="mx-auto block h-auto w-full max-h-[38vh] object-contain lg:max-h-[78vh]"
+        className="mx-auto block h-auto w-full max-h-[52vh] object-contain lg:max-h-[78vh]"
       />
       {ZONES.map((z) => (
-        <button
+        <div
           key={z.id}
-          type="button"
+          role="button"
+          tabIndex={0}
           aria-label={reveal || debug ? z.label : "Zone du corps"}
           className={`zone-hot ${selected ? "pulse" : ""} ${debug || reveal ? "debug" : ""}`}
           style={z.style}
           onClick={() => onZone(z.id)}
-        />
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") onZone(z.id);
+          }}
+        >
+          <div className="zone-stack">
+            {(byZone[z.id] ?? []).map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className={`placed-chip placed-${card.kind} ${blinkingId === card.id ? "chip-error" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPin?.(card.id);
+                }}
+              >
+                {card.title}
+              </button>
+            ))}
+          </div>
+        </div>
       ))}
-      {Object.entries(placements).map(([id, zoneId], i) => {
-        const zone = ZONES.find((z) => z.id === zoneId);
-        const card = CARDS.find((c) => c.id === id);
-        if (!zone || !card) return null;
-        const color = card.kind === "symptome" ? "#C0392B" : card.kind === "prevention" ? "#3D9A5F" : "#9aa3ad";
-        const left = 18 + ((i * 11) % 48);
-        const top = 10 + ((i * 9) % 42);
-        return (
-          <button
-            key={id}
-            type="button"
-            className={`pin absolute ${blinkingId === id ? "chip-error" : ""}`}
-            style={{
-              background: color,
-              top: `calc(${zone.style.top} + ${top}px)`,
-              left: `calc(${zone.style.left} + ${left}%)`,
-            }}
-            aria-label={card.title}
-            onClick={() => onPin?.(id)}
-          />
-        );
-      })}
       {proposed ? (
         <div
           className="pin pin-proposed absolute"
