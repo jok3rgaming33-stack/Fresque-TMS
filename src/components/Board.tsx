@@ -494,6 +494,16 @@ export default function Board({
               members={members}
               onSelect={openCard}
               onPress={onCardPress}
+              detail={
+                selected && !livePlacements[selected.id] ? (
+                  <CardDetailSheet
+                    card={selected}
+                    revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
+                    onPress={onCardPress}
+                    onClose={() => setSelectedId(null)}
+                  />
+                ) : null
+              }
             />
           ) : null}
         </aside>
@@ -510,9 +520,32 @@ export default function Board({
             onPin={(id) => setSelectedId(id)}
             hoverZone={hoverZone}
           />
+          {selected && livePlacements[selected.id] ? (
+            <div className="mt-2 lg:hidden">
+              <CardDetailSheet
+                card={selected}
+                placedZone={livePlacements[selected.id]}
+                revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
+                onClose={() => setSelectedId(null)}
+                onRemove={
+                  variant !== "room" || hostView
+                    ? () => {
+                        if (variant === "room" && room) {
+                          roomFetch({ type: "remove-card", code: room.code, clientId: me, cardId: selected.id }).then(setRoom);
+                        } else {
+                          const next = { ...livePlacements };
+                          delete next[selected.id];
+                          setPlacements(next);
+                        }
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          ) : null}
         </section>
 
-        <aside className={`board-preview ${projection ? "hidden" : ""}`}>
+        <aside className={`board-preview hidden lg:block ${projection ? "!hidden" : ""}`}>
           {selected ? (
             <CardDetailSheet
               card={selected}
@@ -535,7 +568,7 @@ export default function Board({
               }
             />
           ) : (
-            <p className="hidden border border-[var(--line)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)] lg:block">{MESSAGES.help}</p>
+            <p className="border border-[var(--line)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">{MESSAGES.help}</p>
           )}
         </aside>
       </div>
