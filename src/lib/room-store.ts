@@ -279,6 +279,8 @@ export function mutate(action: RoomAction): RoomState {
   }
   if (action.type === "remove-card") {
     if (!isHost(state, me.id) && !isDemo(state)) return state;
+    const card = resolveCard(action.cardId);
+    if (!card || state.kind === "done" || card.kind !== state.kind) return state;
     delete state.placements[action.cardId];
     state.extraIds = (state.extraIds || []).filter((id) => id !== action.cardId);
     state.stepReady = false;

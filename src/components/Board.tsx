@@ -403,9 +403,27 @@ export default function Board({
   }
 
   function canAddCopy(card: NonNullable<typeof selected>) {
+    if (liveKind === "done" || card.kind !== liveKind) return false;
     const extras = liveExtras.filter((id) => resolveCard(id)?.title === card.title);
     const pending = extras.filter((id) => !livePlacements[id]);
     return pending.length === 0 && 1 + extras.length < maxCopies(card.kind, situationId, card.title);
+  }
+
+  function canRemove(card: NonNullable<typeof selected>) {
+    return liveKind !== "done" && card.kind === liveKind && Boolean(livePlacements[card.id]);
+  }
+
+  function removeCard(cardId: string) {
+    const card = resolveCard(cardId);
+    if (!card || !canRemove(card)) return;
+    if (variant === "room" && room) {
+      roomFetch({ type: "remove-card", code: room.code, clientId: me, cardId }).then(setRoom);
+      return;
+    }
+    const next = { ...livePlacements };
+    delete next[cardId];
+    setPlacements(next);
+    setExtraIds((xs) => xs.filter((id) => id !== cardId));
   }
 
   const proposal = room?.proposal;
@@ -580,19 +598,7 @@ export default function Board({
                 revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
                 onClose={() => setSelectedId(null)}
                 onAddCopy={canAddCopy(selected) ? () => addCopy(selected.id) : undefined}
-                onRemove={
-                  variant !== "room" || hostView || demo
-                    ? () => {
-                        if (variant === "room" && room) {
-                          roomFetch({ type: "remove-card", code: room.code, clientId: me, cardId: selected.id }).then(setRoom);
-                        } else {
-                          const next = { ...livePlacements };
-                          delete next[selected.id];
-                          setPlacements(next);
-                        }
-                      }
-                    : undefined
-                }
+                onRemove={canRemove(selected) ? () => removeCard(selected.id) : undefined}
               />
             </div>
           ) : null}
@@ -607,19 +613,7 @@ export default function Board({
               onPress={onCardPress}
               onClose={() => setSelectedId(null)}
               onAddCopy={livePlacements[selected.id] && canAddCopy(selected) ? () => addCopy(selected.id) : undefined}
-              onRemove={
-                livePlacements[selected.id] && (variant !== "room" || hostView || demo)
-                  ? () => {
-                      if (variant === "room" && room) {
-                        roomFetch({ type: "remove-card", code: room.code, clientId: me, cardId: selected.id }).then(setRoom);
-                      } else {
-                        const next = { ...livePlacements };
-                        delete next[selected.id];
-                        setPlacements(next);
-                      }
-                    }
-                  : undefined
-              }
+              onRemove={canRemove(selected) ? () => removeCard(selected.id) : undefined}
             />
           ) : (
             <p className="border border-[var(--line)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">{MESSAGES.help}</p>
