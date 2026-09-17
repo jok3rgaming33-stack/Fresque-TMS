@@ -1,6 +1,7 @@
 import { MESSAGES, cardById, situationById, type Kind, type SituationId } from "@/data/cards";
 import { COLORS, isCorrectPlacement, isStepComplete, nextKind } from "@/lib/game";
 import { DEMO_CODE, type RoomAction, type RoomState } from "@/lib/room";
+import { readCachedRoom, writeCachedRoom } from "@/lib/room-persist";
 import type { ZoneId } from "@/data/zones";
 
 const g = globalThis as typeof globalThis & { __fresqueRooms?: Map<string, RoomState> };
@@ -39,6 +40,18 @@ function ensureDemoRoom(): RoomState {
   };
   rooms.set(DEMO_CODE, room);
   return room;
+}
+
+export async function hydrateRoom(code: string) {
+  const c = (code || "").toUpperCase();
+  if (!c || rooms.has(c)) return;
+  const cached = await readCachedRoom(c);
+  if (cached) rooms.set(c, cached);
+}
+
+export async function persistRoom(state: RoomState) {
+  rooms.set(state.code, state);
+  await writeCachedRoom(state);
 }
 
 function empty(kind: Kind | "done" = "symptome", situationId: SituationId = "tampons"): Omit<RoomState, "code"> {
@@ -156,8 +169,12 @@ export function mutate(action: RoomAction): RoomState {
   }
 
   if (action.type === "propose") {
-    if (!state.lock || state.lock.by !== me.id) throw new Error("Tenez d'abord une carte");
-    const cardId = state.lock.cardId;
+    const cardId = (state.lock?.by === me.id ? state.lock.cardId : null) || action.cardId;
+    if (!cardId) throw new Error("Tenez d'abord une carte");
+    const card = cardById(cardId);
+    if (!card || card.kind !== state.kind || state.placements[cardId]) {
+      throw new Error("Cette carte n'est pas disponible");
+    }
     if (state.mode === "guide") {
       applyPlacement(state, cardId, action.zoneId, me.id);
       return state;

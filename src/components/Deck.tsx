@@ -2,6 +2,7 @@
 
 import type { Card } from "@/data/cards";
 import CardChip from "./CardChip";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
 export default function Deck({
   cards,
@@ -10,6 +11,7 @@ export default function Deck({
   blinkingId,
   members,
   onSelect,
+  onPress,
 }: {
   cards: Card[];
   selectedId: string | null;
@@ -17,6 +19,7 @@ export default function Deck({
   blinkingId?: string | null;
   members?: { id: string; name: string }[];
   onSelect: (id: string) => void;
+  onPress?: (e: ReactPointerEvent, cardId: string) => void;
 }) {
   const families = new Map<string, Card[]>();
   for (const c of cards) {
@@ -38,6 +41,7 @@ export default function Deck({
                 heldBy={lock?.cardId === c.id ? members?.find((m) => m.id === lock.by)?.name : null}
                 blinking={blinkingId === c.id}
                 onClick={() => onSelect(c.id)}
+                onPress={onPress}
               />
             ))}
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   KIND_LABEL,
@@ -48,6 +49,19 @@ export default function Board({
   const [actor, setActor] = useState("Léa");
   const [room, setRoom] = useState<RoomState | null>(initialRoom ?? null);
   const [soloSituation, setSoloSituation] = useState<SituationId>(situationProp ?? "tampons");
+  const [drag, setDrag] = useState<{ cardId: string; x: number; y: number } | null>(null);
+  const pressRef = useRef<{
+    cardId: string;
+    x: number;
+    y: number;
+    timer: number;
+    dragging: boolean;
+    skipClick: boolean;
+  } | null>(null);
+  const roomRef = useRef(room);
+  roomRef.current = room;
+  const skipClickRef = useRef(false);
+  const dropRef = useRef<(cardId: string, zoneId: ZoneId) => void>(() => undefined);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -75,11 +89,46 @@ export default function Board({
   }, [variant, kind, situationId, placements, theme, understood]);
 
   useEffect(() => {
+    if (room?.code === DEMO_CODE) {
+      try {
+        sessionStorage.setItem("fresque-tms-demo", JSON.stringify(room));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [room]);
+
+  useEffect(() => {
+    if (!room || room.code !== DEMO_CODE) return;
+    if (Object.keys(room.placements).length > 0) return;
+    try {
+      const raw = sessionStorage.getItem("fresque-tms-demo");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as RoomState;
+      if (saved?.code === DEMO_CODE && Object.keys(saved.placements || {}).length > 0) {
+        setRoom({
+          ...saved,
+          members: room.members.length ? room.members : saved.members,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [room?.code]);
+
+  useEffect(() => {
     if (variant !== "room" || !room) return;
     const t = setInterval(async () => {
       const next = await roomGet(room.code);
-      if (next) setRoom(next);
-    }, 800);
+      if (!next) return;
+      const cur = roomRef.current;
+      const nextCount = Object.keys(next.placements || {}).length;
+      const curCount = Object.keys(cur?.placements || {}).length;
+      if (cur && nextCount < curCount && next.kind === cur.kind && next.situationId === cur.situationId) {
+        return;
+      }
+      setRoom(next);
+    }, 1200);
     return () => clearInterval(t);
   }, [variant, room?.code]);
 
@@ -103,32 +152,28 @@ export default function Board({
     window.setTimeout(() => setBlinkingId(null), 1100);
   }
 
-  async function selectCard(id: string) {
-    const card = cardById(id);
-    if (!card) return;
-    if (variant === "room" && room) {
-      try {
-        setRoom(await roomFetch({ type: "select", code: room.code, clientId: me, cardId: selectedId === id ? null : id }));
-        setSelectedId(selectedId === id ? null : id);
-      } catch (e) {
-        setMessage(e instanceof Error ? e.message : "Impossible");
-      }
+  function openCard(id: string) {
+    if (skipClickRef.current) {
+      skipClickRef.current = false;
       return;
     }
-    if (card.kind !== liveKind) return;
+    const card = cardById(id);
+    if (!card) return;
+    if (liveKind !== "done" && card.kind !== liveKind && !livePlacements[id]) return;
     setSelectedId(selectedId === id ? null : id);
     if (selectedId !== id) setMessage(MESSAGES.help);
-    if (navigator.vibrate) navigator.vibrate(10);
   }
 
-  async function chooseZone(zoneId: ZoneId) {
-    if (!selectedId) return;
-    const card = cardById(selectedId);
+  async function dropCard(cardId: string, zoneId: ZoneId) {
+    const card = cardById(cardId);
     if (!card) return;
+    if (liveKind !== "done" && card.kind !== liveKind) return;
 
     if (variant === "room" && room) {
       try {
-        setRoom(await roomFetch({ type: "propose", code: room.code, clientId: me, zoneId }));
+        const next = await roomFetch({ type: "propose", code: room.code, clientId: me, zoneId, cardId });
+        setRoom(next);
+        if (next.placements[cardId]) setSelectedId(null);
       } catch (e) {
         setMessage(e instanceof Error ? e.message : "Impossible");
       }
@@ -138,7 +183,6 @@ export default function Board({
     if (!isCorrectPlacement(card, zoneId)) {
       flash(card.id);
       setMessage(MESSAGES.error);
-      setSelectedId(null);
       return;
     }
     const next = { ...livePlacements, [card.id]: zoneId };
@@ -150,6 +194,79 @@ export default function Board({
       setMessage(null);
     }
   }
+
+  function chooseZone(zoneId: ZoneId) {
+    if (selectedId && !livePlacements[selectedId]) dropCard(selectedId, zoneId);
+  }
+
+  dropRef.current = dropCard;
+
+  function onCardPress(e: ReactPointerEvent, cardId: string) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const card = cardById(cardId);
+    if (!card || livePlacements[cardId]) return;
+    if (liveKind !== "done" && card.kind !== liveKind) return;
+    window.clearTimeout(pressRef.current?.timer);
+    pressRef.current = {
+      cardId,
+      x: e.clientX,
+      y: e.clientY,
+      dragging: false,
+      skipClick: false,
+      timer: window.setTimeout(() => {
+        const p = pressRef.current;
+        if (!p || p.cardId !== cardId) return;
+        p.dragging = true;
+        p.skipClick = true;
+        skipClickRef.current = true;
+        setSelectedId(cardId);
+        setDrag({ cardId, x: p.x, y: p.y });
+        if (navigator.vibrate) navigator.vibrate(12);
+      }, 180),
+    };
+  }
+
+  useEffect(() => {
+    function move(e: PointerEvent) {
+      const p = pressRef.current;
+      if (!p) return;
+      const dist = Math.hypot(e.clientX - p.x, e.clientY - p.y);
+      if (!p.dragging) {
+        if (dist > 10) {
+          window.clearTimeout(p.timer);
+          pressRef.current = null;
+        }
+        return;
+      }
+      e.preventDefault();
+      p.x = e.clientX;
+      p.y = e.clientY;
+      setDrag({ cardId: p.cardId, x: e.clientX, y: e.clientY });
+    }
+    function up(e: PointerEvent) {
+      const p = pressRef.current;
+      pressRef.current = null;
+      if (!p) return;
+      window.clearTimeout(p.timer);
+      if (!p.dragging) return;
+      setDrag(null);
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const zone = el?.closest("[data-zone-id]") as HTMLElement | null;
+      const zoneId = zone?.dataset.zoneId as ZoneId | undefined;
+      if (zoneId) dropRef.current(p.cardId, zoneId);
+      window.setTimeout(() => {
+        skipClickRef.current = false;
+      }, 80);
+    }
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, []);
 
   function continueStep() {
     if (variant === "room" && room) {
@@ -317,7 +434,8 @@ export default function Board({
               lock={lock}
               blinkingId={liveBlink}
               members={members}
-              onSelect={selectCard}
+              onSelect={openCard}
+              onPress={onCardPress}
             />
           ) : null}
         </aside>
@@ -341,6 +459,7 @@ export default function Board({
               card={selected}
               placedZone={livePlacements[selected.id]}
               revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
+              onPress={onCardPress}
               onClose={() => setSelectedId(null)}
               onRemove={
                 livePlacements[selected.id] && (variant !== "room" || hostView)
@@ -396,6 +515,24 @@ export default function Board({
         </div>
       ) : null}
       </div>
+
+      {drag ? (
+        <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
+          {(() => {
+            const card = cardById(drag.cardId);
+            if (!card) return null;
+            return (
+              <div className={`chip chip-${card.kind} chip-selected`}>
+                {card.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={card.image} alt="" className="h-11 w-8 shrink-0 object-cover object-top" />
+                ) : null}
+                <span>{card.title}</span>
+              </div>
+            );
+          })()}
+        </div>
+      ) : null}
     </div>
   );
 }

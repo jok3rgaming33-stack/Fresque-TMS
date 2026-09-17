@@ -37,7 +37,7 @@ export type RoomAction =
   | { type: "join"; code: string; clientId: string; name: string; role?: Role }
   | { type: "leave"; code: string; clientId: string }
   | { type: "select"; code: string; clientId: string; cardId: string | null }
-  | { type: "propose"; code: string; clientId: string; zoneId: ZoneId }
+  | { type: "propose"; code: string; clientId: string; zoneId: ZoneId; cardId?: string }
   | { type: "vote"; code: string; clientId: string; vote: "oui" | "non" }
   | { type: "note"; code: string; clientId: string; text: string }
   | { type: "force"; code: string; clientId: string }

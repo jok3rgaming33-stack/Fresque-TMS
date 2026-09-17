@@ -1,6 +1,7 @@
 "use client";
 
 import type { Card } from "@/data/cards";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
 export default function CardChip({
   card,
@@ -8,23 +9,26 @@ export default function CardChip({
   heldBy,
   blinking,
   onClick,
+  onPress,
 }: {
   card: Card;
   selected?: boolean;
   heldBy?: string | null;
   blinking?: boolean;
   onClick: () => void;
+  onPress?: (e: ReactPointerEvent, cardId: string) => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      onPointerDown={(e) => onPress?.(e, card.id)}
       className={`chip chip-${card.kind} ${selected ? "chip-selected" : ""} ${heldBy ? "chip-held" : ""} ${blinking ? "chip-error" : ""}`}
       aria-pressed={selected}
     >
       {card.image ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={card.image} alt="" className="h-11 w-8 shrink-0 rounded-[3px] object-cover object-top" />
+        <img src={card.image} alt="" draggable={false} className="h-11 w-8 shrink-0 rounded-[3px] object-cover object-top" />
       ) : (
         <span className="chip-mark" aria-hidden>
           ●

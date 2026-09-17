@@ -2,6 +2,7 @@
 
 import type { Card } from "@/data/cards";
 import { zoneLabel, type ZoneId } from "@/data/zones";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
 export default function CardDetailSheet({
   card,
@@ -9,12 +10,14 @@ export default function CardDetailSheet({
   revealZones,
   onClose,
   onRemove,
+  onPress,
 }: {
   card: Card;
   placedZone?: ZoneId;
   revealZones?: boolean;
   onClose: () => void;
   onRemove?: () => void;
+  onPress?: (e: ReactPointerEvent, cardId: string) => void;
 }) {
   const showZones = Boolean(revealZones);
   return (
@@ -22,9 +25,15 @@ export default function CardDetailSheet({
       <div className="card-preview-layout">
         {card.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={card.image} alt={card.title} className="card-preview-img" />
+          <img
+            src={card.image}
+            alt={card.title}
+            draggable={false}
+            className="card-preview-img"
+            onPointerDown={(e) => onPress?.(e, card.id)}
+          />
         ) : (
-          <div className={`card-face card-face-${card.kind}`}>
+          <div className={`card-face card-face-${card.kind}`} onPointerDown={(e) => onPress?.(e, card.id)}>
             <p className="card-face-kind">{card.kind === "symptome" ? "Symptôme" : card.kind === "cause" ? "Cause" : "Prévention"}</p>
             <p className="card-face-title">{card.title}</p>
           </div>
@@ -37,7 +46,9 @@ export default function CardDetailSheet({
           ) : null}
           {showZones ? (
             <p className="mt-2 text-sm text-[var(--gold-2)]">Zone : {card.zones.map(zoneLabel).join(" · ")}</p>
-          ) : null}
+          ) : (
+            <p className="mt-2 text-sm text-[var(--muted)]">Maintenez la carte, puis glissez-la sur une zone du corps.</p>
+          )}
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             {placedZone && onRemove ? (
               <button type="button" onClick={onRemove} className="min-h-11 flex-1 border border-[var(--line)] px-4 font-semibold">

@@ -45,6 +45,7 @@ export default function BodyMap({
           role="button"
           tabIndex={0}
           aria-label={reveal || debug ? z.label : "Zone du corps"}
+          data-zone-id={z.id}
           className={`zone-hot ${selected ? "pulse" : ""} ${debug || reveal ? "debug" : ""}`}
           style={z.style}
           onClick={() => onZone(z.id)}
