@@ -22,23 +22,25 @@ export default function CardChip({
     <button
       type="button"
       onClick={(e) => {
-        if (e.detail === 0) onClick();
+        const pt = (e.nativeEvent as PointerEvent).pointerType;
+        if (pt === "mouse") return;
+        onClick();
       }}
-      onPointerDown={(e) => onPress?.(e, card.id)}
+      onPointerDown={(e) => {
+        if (e.pointerType === "mouse") onPress?.(e, card.id);
+      }}
       onContextMenu={(e) => e.preventDefault()}
-      className={`chip chip-${card.kind} ${selected ? "chip-selected" : ""} ${heldBy ? "chip-held" : ""} ${blinking ? "chip-error" : ""}`}
+      className={`mini-card chip-${card.kind} ${selected ? "chip-selected" : ""} ${heldBy ? "chip-held" : ""} ${blinking ? "chip-error" : ""}`}
       aria-pressed={selected}
     >
       {card.image ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={card.image} alt="" draggable={false} className="h-11 w-8 shrink-0 rounded-[3px] object-cover object-top" />
+        <img src={card.image} alt="" draggable={false} className="mini-card-img" />
       ) : (
-        <span className="chip-mark" aria-hidden>
-          ●
-        </span>
+        <span className="mini-card-fallback">{card.kind === "symptome" ? "S" : card.kind === "cause" ? "C" : "P"}</span>
       )}
-      <span className="min-w-0 flex-1 break-words text-left leading-snug">{card.title}</span>
-      {heldBy ? <span className="ml-1 shrink-0 text-[10px] font-semibold opacity-80">· {heldBy}</span> : null}
+      <span className="mini-card-title">{card.title}</span>
+      {heldBy ? <span className="mini-card-held">{heldBy}</span> : null}
     </button>
   );
 }

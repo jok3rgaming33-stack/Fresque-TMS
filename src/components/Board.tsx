@@ -15,7 +15,7 @@ import {
   type Kind,
   type SituationId,
 } from "@/data/cards";
-import type { ZoneId } from "@/data/zones";
+import { zoneLabel, type ZoneId } from "@/data/zones";
 import { continueLabel, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
 import { clientId, clearSolo, loadSolo, saveSolo } from "@/lib/storage";
 import { DEMO_CODE, roomFetch, roomGet, type Member, type RoomState } from "@/lib/room";
@@ -54,6 +54,7 @@ export default function Board({
   const [extraIds, setExtraIds] = useState<string[]>([]);
   const [drag, setDrag] = useState<{ cardId: string; x: number; y: number } | null>(null);
   const [hoverZone, setHoverZone] = useState<ZoneId | null>(null);
+  const [inspectZone, setInspectZone] = useState<ZoneId | null>(null);
   const pressRef = useRef<{
     cardId: string;
     x: number;
@@ -172,6 +173,7 @@ export default function Board({
     const card = resolveCard(id);
     if (!card) return;
     if (liveKind !== "done" && card.kind !== liveKind && !livePlacements[id]) return;
+    setInspectZone(null);
     setSelectedId((cur) => (cur === id ? null : id));
   }
 
@@ -204,6 +206,7 @@ export default function Board({
     if (!card) return;
     if (liveKind !== "done" && card.kind !== liveKind) return;
 
+    setInspectZone(null);
     if (!isCorrectPlacement(card, zoneId, livePlacements)) {
       flash(card.id);
       setMessage(MESSAGES.error);
@@ -243,14 +246,20 @@ export default function Board({
 
   function chooseZone(zoneId: ZoneId) {
     if (drag) return;
-    if (selectedId && !livePlacements[selectedId]) dropCard(selectedId, zoneId);
+    if (selectedId && !livePlacements[selectedId]) {
+      dropCard(selectedId, zoneId);
+      setInspectZone(null);
+      return;
+    }
+    setSelectedId(null);
+    setInspectZone((cur) => (cur === zoneId ? null : zoneId));
   }
 
   dropRef.current = dropCard;
   openRef.current = openCard;
 
   function onCardPress(e: ReactPointerEvent, cardId: string) {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
     const card = resolveCard(cardId);
     if (!card || livePlacements[cardId]) return;
     if (liveKind !== "done" && card.kind !== liveKind) return;
@@ -261,18 +270,8 @@ export default function Board({
       x: e.clientX,
       y: e.clientY,
       dragging: false,
-      mouse,
-      timer: mouse
-        ? 0
-        : window.setTimeout(() => {
-            const p = pressRef.current;
-            if (!p || p.cardId !== cardId) return;
-            p.dragging = true;
-            setSelectedId(null);
-            setDrag({ cardId, x: p.x, y: p.y });
-            lockPage(true);
-            if (navigator.vibrate) navigator.vibrate(12);
-          }, 220),
+      mouse: true,
+      timer: 0,
     };
   }
 
@@ -553,7 +552,70 @@ export default function Board({
       ) : null}
       </div>
 
-      <div className="board-stage mt-3">
+      <div className="board-stage mt-2">
+        <section className="board-body">
+          <BodyMap
+            selected={selected && !livePlacements[selected.id] ? selected : null}
+            placements={livePlacements}
+            proposed={proposal ? { cardId: proposal.cardId, zoneId: proposal.zoneId } : null}
+            reveal={Boolean(room?.revealZones) && Boolean(hostView)}
+            debug={debug && Boolean(hostView)}
+            onZone={chooseZone}
+            hoverZone={hoverZone}
+          />
+        </section>
+
+        <div className="board-slot">
+          {inspectZone && !selectedId ? (
+            <div className="sheet p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="font-serif text-lg">{zoneLabel(inspectZone)}</p>
+                <button type="button" className="min-h-11 px-3 text-sm" onClick={() => setInspectZone(null)}>
+                  Fermer
+                </button>
+              </div>
+              <ul className="space-y-2">
+                {Object.entries(livePlacements)
+                  .filter(([, z]) => z === inspectZone)
+                  .map(([id]) => {
+                    const card = resolveCard(id);
+                    if (!card) return null;
+                    return (
+                      <li key={id} className="flex items-center justify-between gap-2 border border-[var(--line)] px-3 py-2 text-sm">
+                        <button type="button" className="min-w-0 flex-1 text-left font-semibold" onClick={() => setSelectedId(id)}>
+                          {card.title}
+                        </button>
+                        {canRemove(card) ? (
+                          <button type="button" className="shrink-0 text-xs text-[var(--muted)]" onClick={() => removeCard(id)}>
+                            Retirer
+                          </button>
+                        ) : (
+                          <span className="shrink-0 text-[10px] uppercase tracking-wide text-[var(--muted)]">Validé</span>
+                        )}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </div>
+          ) : selected && !livePlacements[selected.id] ? (
+            <CardDetailSheet
+              card={selected}
+              revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
+              onPress={onCardPress}
+              onClose={() => setSelectedId(null)}
+            />
+          ) : selected && livePlacements[selected.id] ? (
+            <CardDetailSheet
+              card={selected}
+              placedZone={livePlacements[selected.id]}
+              revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
+              onClose={() => setSelectedId(null)}
+              onAddCopy={canAddCopy(selected) ? () => addCopy(selected.id) : undefined}
+              onRemove={canRemove(selected) ? () => removeCard(selected.id) : undefined}
+            />
+          ) : null}
+        </div>
+
         <aside className={`board-deck ${projection ? "hidden" : ""}`}>
           {liveKind !== "done" ? (
             <Deck
@@ -564,48 +626,41 @@ export default function Board({
               members={members}
               onSelect={openCard}
               onPress={onCardPress}
-              detail={
-                selected && !livePlacements[selected.id] ? (
-                  <CardDetailSheet
-                    card={selected}
-                    revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
-                    onPress={onCardPress}
-                    onClose={() => setSelectedId(null)}
-                  />
-                ) : null
-              }
             />
           ) : null}
         </aside>
 
-        <section className="board-body">
-          <BodyMap
-            selected={selected}
-            placements={livePlacements}
-            proposed={proposal ? { cardId: proposal.cardId, zoneId: proposal.zoneId } : null}
-            blinkingId={liveBlink}
-            reveal={Boolean(room?.revealZones) && Boolean(hostView)}
-            debug={debug && Boolean(hostView)}
-            onZone={chooseZone}
-            onPin={(id) => setSelectedId(id)}
-            hoverZone={hoverZone}
-          />
-          {selected && livePlacements[selected.id] ? (
-            <div className="mt-2 lg:hidden">
-              <CardDetailSheet
-                card={selected}
-                placedZone={livePlacements[selected.id]}
-                revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
-                onClose={() => setSelectedId(null)}
-                onAddCopy={canAddCopy(selected) ? () => addCopy(selected.id) : undefined}
-                onRemove={canRemove(selected) ? () => removeCard(selected.id) : undefined}
-              />
+        <aside className={`board-preview ${projection ? "!hidden" : ""}`}>
+          {inspectZone && !selected ? (
+            <div className="sheet p-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="font-serif text-xl">{zoneLabel(inspectZone)}</p>
+                <button type="button" className="min-h-11 px-3 text-sm" onClick={() => setInspectZone(null)}>
+                  Fermer
+                </button>
+              </div>
+              <ul className="space-y-2">
+                {Object.entries(livePlacements)
+                  .filter(([, z]) => z === inspectZone)
+                  .map(([id]) => {
+                    const card = resolveCard(id);
+                    if (!card) return null;
+                    return (
+                      <li key={id} className="flex items-center justify-between gap-2 border border-[var(--line)] px-3 py-2 text-sm">
+                        <span className="font-semibold">{card.title}</span>
+                        {canRemove(card) ? (
+                          <button type="button" className="text-xs text-[var(--muted)]" onClick={() => removeCard(id)}>
+                            Retirer
+                          </button>
+                        ) : (
+                          <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Validé</span>
+                        )}
+                      </li>
+                    );
+                  })}
+              </ul>
             </div>
-          ) : null}
-        </section>
-
-        <aside className={`board-preview hidden lg:block ${projection ? "!hidden" : ""}`}>
-          {selected ? (
+          ) : selected ? (
             <CardDetailSheet
               card={selected}
               placedZone={livePlacements[selected.id]}

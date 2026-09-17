@@ -1,17 +1,15 @@
 "use client";
 
 import { resolveCard, type Card } from "@/data/cards";
-import { ZONES, type ZoneId } from "@/data/zones";
+import { ZONES, zoneLabel, type ZoneId } from "@/data/zones";
 
 export default function BodyMap({
   selected,
   placements,
   proposed,
-  blinkingId,
   reveal,
   debug,
   onZone,
-  onPin,
   hoverZone,
 }: {
   selected: Card | null;
@@ -26,12 +24,12 @@ export default function BodyMap({
   projection?: boolean;
   scale?: number;
 }) {
-  const byZone: Record<string, Card[]> = {};
-  for (const [id, zoneId] of Object.entries(placements)) {
-    const card = resolveCard(id);
-    if (!card) continue;
-    (byZone[zoneId] ??= []).push(card);
+  const counts: Partial<Record<ZoneId, number>> = {};
+  for (const zoneId of Object.values(placements)) {
+    counts[zoneId] = (counts[zoneId] ?? 0) + 1;
   }
+  const unique = ZONES.filter((z, i, arr) => arr.findIndex((x) => x.id === z.id) === i);
+  const armed = Boolean(selected) || Boolean(hoverZone);
 
   return (
     <div className="relative mx-auto w-fit max-w-full">
@@ -39,7 +37,7 @@ export default function BodyMap({
       <img
         src="/perso.png"
         alt="Personnage technicien"
-        className="block h-auto max-h-[min(68vh,720px)] w-auto max-w-full"
+        className="board-body-img"
       />
       {ZONES.map((z, i) => (
         <div
@@ -48,32 +46,35 @@ export default function BodyMap({
           tabIndex={0}
           aria-label={reveal || debug ? z.label : "Zone du corps"}
           data-zone-id={z.id}
-          className={`zone-hot ${selected || hoverZone ? "pulse" : ""} ${hoverZone === z.id ? "drop-ok" : ""} ${debug || reveal ? "debug" : ""}`}
+          className={`zone-hot ${armed ? "armed" : ""} ${hoverZone === z.id ? "drop-ok" : ""} ${debug || reveal ? "debug" : ""}`}
           style={z.style}
           onClick={() => onZone(z.id)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") onZone(z.id);
           }}
-        >
-          {z.stack ? (
-            <div className="zone-stack">
-              {(byZone[z.id] ?? []).map((card) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  className={`placed-chip placed-${card.kind} ${blinkingId === card.id ? "chip-error" : ""}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPin?.(card.id);
-                  }}
-                >
-                  {card.title}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        />
       ))}
+      {unique.map((z) => {
+        const n = counts[z.id] ?? 0;
+        if (!n) return null;
+        const top = parseFloat(z.style.top) + parseFloat(z.style.height) / 2;
+        const left = parseFloat(z.style.left) + parseFloat(z.style.width) / 2;
+        return (
+          <button
+            key={`badge-${z.id}`}
+            type="button"
+            className="zone-badge"
+            style={{ top: `${top}%`, left: `${left}%` }}
+            aria-label={`${n} carte${n > 1 ? "s" : ""} · ${zoneLabel(z.id)}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onZone(z.id);
+            }}
+          >
+            {n}
+          </button>
+        );
+      })}
       {proposed ? (
         <div
           className="pin pin-proposed absolute"

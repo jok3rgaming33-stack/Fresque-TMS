@@ -356,6 +356,6 @@ export const MESSAGES = {
   afterCauses: "Causes validées. Les moyens de prévention sont déverrouillés.",
   done: "Parcours terminé : symptômes, causes et préventions sont en place.",
   error: "Mauvais emplacement : la carte revient dans le jeu.",
-  help: "Cliquez pour lire. Glissez ensuite vers une zone. Sur téléphone : maintenez puis glissez.",
+  help: "Téléphone : touchez une carte, puis une zone. Ordinateur : cliquez pour lire, glissez pour poser.",
 };
 
