@@ -15,7 +15,7 @@ import {
 import type { ZoneId } from "@/data/zones";
 import { continueLabel, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
 import { clientId, clearSolo, loadSolo, saveSolo } from "@/lib/storage";
-import { roomFetch, roomGet, type Member, type RoomState } from "@/lib/room";
+import { DEMO_CODE, roomFetch, roomGet, type Member, type RoomState } from "@/lib/room";
 import BodyMap from "./BodyMap";
 import Deck from "./Deck";
 import CardDetailSheet from "./CardDetailSheet";
@@ -166,9 +166,11 @@ export default function Board({
     if (n === "done") router.push("/fresque");
   }
 
+  const demo = room?.code === DEMO_CODE;
+
   function reset() {
     if (variant === "room" && room) {
-      if (!hostView) return;
+      if (!hostView && !demo) return;
       roomFetch({ type: "restart-all", code: room.code, clientId: me }).then(setRoom);
       return;
     }
@@ -199,7 +201,7 @@ export default function Board({
             </div>
             <span className="inline-block w-14 shrink-0" />
           </div>
-          {hostView || variant !== "room" ? (
+          {hostView || variant !== "room" || demo ? (
             <div className="flex flex-wrap justify-center gap-2">
               {hostView ? (
                 <button type="button" onClick={() => router.push(`/formateur/corrige?situation=${situation.id}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">

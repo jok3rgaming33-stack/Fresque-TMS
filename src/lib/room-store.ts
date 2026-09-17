@@ -1,6 +1,6 @@
 import { MESSAGES, cardById, situationById, type Kind, type SituationId } from "@/data/cards";
 import { COLORS, isCorrectPlacement, isStepComplete, nextKind } from "@/lib/game";
-import type { RoomAction, RoomState } from "@/lib/room";
+import { DEMO_CODE, type RoomAction, type RoomState } from "@/lib/room";
 import type { ZoneId } from "@/data/zones";
 
 const g = globalThis as typeof globalThis & { __fresqueRooms?: Map<string, RoomState> };
@@ -22,6 +22,23 @@ function member(state: RoomState, id: string) {
 
 function isHost(state: RoomState, id: string) {
   return member(state, id)?.role === "hote";
+}
+
+function isDemo(state: RoomState) {
+  return state.code === DEMO_CODE;
+}
+
+function ensureDemoRoom(): RoomState {
+  const existing = rooms.get(DEMO_CODE);
+  if (existing) return existing;
+  const room: RoomState = {
+    code: DEMO_CODE,
+    ...empty("symptome", "tampons"),
+    mode: "guide",
+    members: [],
+  };
+  rooms.set(DEMO_CODE, room);
+  return room;
 }
 
 function empty(kind: Kind | "done" = "symptome", situationId: SituationId = "tampons"): Omit<RoomState, "code"> {
@@ -85,7 +102,10 @@ export function mutate(action: RoomAction): RoomState {
     return state;
   }
 
-  const state = rooms.get(action.code);
+  const code = (action.code || "").toUpperCase();
+  if (code === DEMO_CODE) ensureDemoRoom();
+
+  const state = rooms.get(code);
   if (!state) throw new Error("Atelier introuvable");
   state.updatedAt = Date.now();
 
@@ -188,7 +208,7 @@ export function mutate(action: RoomAction): RoomState {
   }
 
   if (action.type === "restart-step") {
-    if (!isHost(state, me.id) || state.kind === "done") return state;
+    if ((!isHost(state, me.id) && !isDemo(state)) || state.kind === "done") return state;
     const kind = state.kind;
     for (const id of Object.keys(state.placements)) {
       const card = cardById(id);
@@ -202,9 +222,14 @@ export function mutate(action: RoomAction): RoomState {
   }
 
   if (action.type === "restart-all") {
-    if (!isHost(state, me.id)) return state;
+    if (!isHost(state, me.id) && !isDemo(state)) return state;
     const members = state.members;
-    const next: RoomState = { code: state.code, ...empty("symptome", state.situationId), members };
+    const next: RoomState = {
+      code: state.code,
+      ...empty("symptome", state.situationId),
+      members,
+      mode: isDemo(state) ? "guide" : "atelier",
+    };
     rooms.set(state.code, next);
     return next;
   }
@@ -235,5 +260,7 @@ export function mutate(action: RoomAction): RoomState {
 }
 
 export function getRoom(code: string) {
-  return rooms.get(code.toUpperCase()) ?? null;
+  const c = code.toUpperCase();
+  if (c === DEMO_CODE) return ensureDemoRoom();
+  return rooms.get(c) ?? null;
 }

@@ -1,6 +1,8 @@
 import type { Kind, SituationId } from "@/data/cards";
 import type { ZoneId } from "@/data/zones";
 
+export const DEMO_CODE = "0000";
+
 export type Role = "hote" | "collaborateur" | "observateur";
 export type PlayMode = "atelier" | "guide";
 
