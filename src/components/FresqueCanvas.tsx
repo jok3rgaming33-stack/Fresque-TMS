@@ -51,14 +51,14 @@ export default function FresqueCanvas({
       <BodyMap selected={null} placements={placements} onZone={() => undefined} onPin={(id) => setOpen(CARDS.find((c) => c.id === id) ?? null)} />
       {col(prev, "prevention")}
       {open ? (
-        <aside className="lg:col-span-3 rounded-3xl bg-[var(--panel)] p-5">
-          <p className="text-xs uppercase text-[var(--muted)]">{open.family}</p>
-          <h3 className="text-xl font-bold">{open.title}</h3>
-          <p className="mt-2">{open.description}</p>
+        <aside className="border border-[var(--line)] bg-[var(--panel)] p-5 lg:col-span-3">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--gold)]">{open.family}</p>
+          <h3 className="mt-1 font-serif text-2xl">{open.title}</h3>
+          <p className="mt-2 text-sm leading-relaxed">{open.description}</p>
           <p className="mt-2 text-xs text-[var(--muted)]">{links.filter((l) => l.from === open.id || l.to === open.id).length} lien(s) sur la fresque</p>
           <button
             type="button"
-            className="mt-3 min-h-11 rounded-full bg-[var(--green)] px-4 font-bold text-[#0f1a12]"
+            className="mt-4 min-h-11 bg-[var(--gold)] px-4 font-semibold text-[#1a140c]"
             onClick={() => setUnderstood((xs) => (xs.includes(open.id) ? xs : [...xs, open.id]))}
           >
             {understood.includes(open.id) ? "Compris" : "Marquer comme compris"}

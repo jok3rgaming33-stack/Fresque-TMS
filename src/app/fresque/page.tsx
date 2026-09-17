@@ -24,15 +24,18 @@ function Inner() {
   }, [code]);
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <Link href="/" className="font-semibold">
+    <div className="mx-auto min-h-dvh max-w-6xl px-5 py-8">
+      <header className="mb-8">
+        <Link href="/" className="text-sm text-[var(--muted)]">
           ← Accueil
         </Link>
-        <h1 className="rounded-full bg-gradient-to-r from-[#C0392B] via-zinc-600 to-[#3D9A5F] px-5 py-2 font-bold">Fresque TMS</h1>
-        <Link href={code ? `/atelier/salle?code=${code}` : "/atelier?solo=1"} className="rounded-full bg-white/10 px-4 py-2 text-sm">
-          Revoir les étapes
-        </Link>
+        <p className="mt-6 text-[11px] uppercase tracking-[0.3em] text-[var(--gold)]">Fresque collective</p>
+        <h1 className="mt-2 font-serif text-4xl">Fresque TMS</h1>
+        {code ? (
+          <Link href={`/atelier/salle?code=${code}`} className="mt-4 inline-flex min-h-11 items-center border border-[var(--line)] px-4 text-sm">
+            Revoir les étapes
+          </Link>
+        ) : null}
       </header>
       <FresqueCanvas placements={placements} />
     </div>

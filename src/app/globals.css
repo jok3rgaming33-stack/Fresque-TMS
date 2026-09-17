@@ -366,15 +366,4 @@ body {
   }
 }
 
-.access-card {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
-  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
-}
-.access-card:hover {
-  transform: translateY(-4px);
-  border-color: rgb(212 175 122 / 0.55);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 0.35);
-}
+
