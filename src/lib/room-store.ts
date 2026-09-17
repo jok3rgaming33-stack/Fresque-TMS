@@ -74,6 +74,7 @@ function empty(kind: Kind | "done" = "symptome", situationId: SituationId = "tam
     projection: false,
     stepReady: false,
     extraIds: [],
+    createdAt: Date.now(),
     updatedAt: Date.now(),
   };
 }
@@ -115,7 +116,17 @@ export function mutate(action: RoomAction): RoomState {
     const state: RoomState = {
       code,
       ...empty("symptome", situationId),
-      members: [{ id: action.clientId, name: action.name, color: COLORS[0], role: "hote" }],
+      members: [
+        {
+          id: action.clientId,
+          name: action.name,
+          firstName: action.name,
+          lastName: "",
+          color: COLORS[0],
+          role: "hote",
+          attendance: { matin: true, "apres-midi": true },
+        },
+      ],
     };
     rooms.set(code, state);
     return state;
@@ -129,16 +140,34 @@ export function mutate(action: RoomAction): RoomState {
   state.updatedAt = Date.now();
 
   if (action.type === "join") {
+    const firstName = (action.firstName || action.name || "").trim().split(/\s+/)[0];
+    const lastName = (action.lastName || "").trim() || (action.name || "").trim().split(/\s+/).slice(1).join(" ");
+    if (!firstName) throw new Error("Le prénom est obligatoire");
+    if ((action.role ?? "collaborateur") !== "hote" && !lastName) throw new Error("Le nom est obligatoire");
+    const slot = action.slot ?? "matin";
+    const mark = {
+      matin: slot === "matin" || slot === "journee",
+      "apres-midi": slot === "apres-midi" || slot === "journee",
+    };
     const existing = member(state, action.clientId);
     if (existing) {
-      existing.name = action.name || existing.name;
+      existing.firstName = firstName;
+      existing.lastName = lastName;
+      existing.name = [firstName, lastName].filter(Boolean).join(" ");
+      existing.attendance = {
+        matin: Boolean(existing.attendance?.matin || mark.matin),
+        "apres-midi": Boolean(existing.attendance?.["apres-midi"] || mark["apres-midi"]),
+      };
       return state;
     }
     state.members.push({
       id: action.clientId,
-      name: action.name,
+      firstName,
+      lastName,
+      name: [firstName, lastName].filter(Boolean).join(" "),
       color: COLORS[state.members.length % COLORS.length],
       role: action.role ?? "collaborateur",
+      attendance: mark,
     });
     return state;
   }
@@ -147,6 +176,25 @@ export function mutate(action: RoomAction): RoomState {
     state.members = state.members.filter((m) => m.id !== action.clientId);
     if (state.lock?.by === action.clientId) state.lock = null;
     if (state.proposal?.by === action.clientId) state.proposal = null;
+    return state;
+  }
+
+  if (action.type === "kick") {
+    if (!isHost(state, action.clientId)) throw new Error("Seul le formateur peut retirer un participant");
+    const target = member(state, action.targetId);
+    if (!target || target.role === "hote") return state;
+    state.members = state.members.filter((m) => m.id !== action.targetId);
+    if (state.lock?.by === action.targetId) state.lock = null;
+    if (state.proposal?.by === action.targetId) state.proposal = null;
+    return state;
+  }
+
+  if (action.type === "set-attendance") {
+    if (!isHost(state, action.clientId)) throw new Error("Seul le formateur peut modifier l'émargement");
+    const target = member(state, action.targetId);
+    if (!target || target.role === "hote") return state;
+    target.attendance = target.attendance ?? { matin: false, "apres-midi": false };
+    target.attendance[action.slot] = action.present;
     return state;
   }
 

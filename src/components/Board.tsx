@@ -19,6 +19,7 @@ import { zoneLabel, type ZoneId } from "@/data/zones";
 import { continueLabel, isCorrectPlacement, isStepComplete, nextKind, stepMessage } from "@/lib/game";
 import { clientId, clearSolo, leaveLocalSession, loadSolo, saveSolo } from "@/lib/storage";
 import { DEMO_CODE, roomFetch, roomGet, type Member, type RoomState } from "@/lib/room";
+import { playLabel } from "@/lib/names";
 import BodyMap from "./BodyMap";
 import Deck from "./Deck";
 import CardDetailSheet from "./CardDetailSheet";
@@ -127,6 +128,11 @@ export default function Board({
     const t = setInterval(async () => {
       const next = await roomGet(room.code);
       if (!next) return;
+      if (me && !next.members.some((m) => m.id === me)) {
+        leaveLocalSession();
+        router.push("/");
+        return;
+      }
       const cur = roomRef.current;
       const rank: Record<string, number> = { symptome: 0, cause: 1, prevention: 2, done: 3 };
       const nextCount = Object.keys(next.placements || {}).length;
@@ -474,6 +480,11 @@ export default function Board({
           </div>
           {hostView ? (
             <div className="hidden flex-wrap justify-center gap-2 lg:flex">
+              {room ? (
+                <button type="button" onClick={() => router.push(`/formateur/emargement?code=${room.code}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                  Émargement
+                </button>
+              ) : null}
               <button type="button" onClick={() => router.push(`/formateur/corrige?situation=${situation.id}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">
                 Corrigé
               </button>
@@ -518,7 +529,7 @@ export default function Board({
         <div className="mt-1 flex flex-wrap justify-center gap-1">
           {members.map((m) => (
             <span key={m.id} className="rounded-sm px-1.5 py-0.5 text-[10px] font-bold" style={{ background: m.color }}>
-              {m.name}
+              {playLabel(m, members)}
             </span>
           ))}
         </div>
@@ -719,6 +730,9 @@ export default function Board({
           </button>
           <button className="min-h-11 bg-white/10 px-4" onClick={() => roomFetch({ type: "restart-step", code: room.code, clientId: me }).then(setRoom)}>
             Recommencer l&apos;étape
+          </button>
+          <button className="min-h-11 border border-[var(--line)] px-4" onClick={() => router.push(`/formateur/emargement?code=${room.code}`)}>
+            Émargement
           </button>
         </div>
       ) : null}

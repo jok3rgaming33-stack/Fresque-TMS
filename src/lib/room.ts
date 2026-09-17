@@ -6,7 +6,17 @@ export const DEMO_CODE = "0000";
 export type Role = "hote" | "collaborateur" | "observateur";
 export type PlayMode = "atelier" | "guide";
 
-export type Member = { id: string; name: string; color: string; role: Role };
+export type AttendanceSlot = "matin" | "apres-midi";
+
+export type Member = {
+  id: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  color: string;
+  role: Role;
+  attendance?: { matin: boolean; "apres-midi": boolean };
+};
 
 export type RoomState = {
   code: string;
@@ -30,13 +40,25 @@ export type RoomState = {
   projection: boolean;
   stepReady: boolean;
   extraIds: string[];
+  createdAt?: number;
   updatedAt: number;
 };
 
 export type RoomAction =
   | { type: "create"; clientId: string; name: string; situationId: SituationId }
-  | { type: "join"; code: string; clientId: string; name: string; role?: Role }
+  | {
+      type: "join";
+      code: string;
+      clientId: string;
+      name?: string;
+      firstName?: string;
+      lastName?: string;
+      slot?: "matin" | "apres-midi" | "journee";
+      role?: Role;
+    }
   | { type: "leave"; code: string; clientId: string }
+  | { type: "kick"; code: string; clientId: string; targetId: string }
+  | { type: "set-attendance"; code: string; clientId: string; targetId: string; slot: AttendanceSlot; present: boolean }
   | { type: "select"; code: string; clientId: string; cardId: string | null }
   | { type: "propose"; code: string; clientId: string; zoneId: ZoneId; cardId?: string }
   | { type: "vote"; code: string; clientId: string; vote: "oui" | "non" }

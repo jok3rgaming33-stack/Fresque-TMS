@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Brand from "@/components/Brand";
 import FormateurGate from "@/components/FormateurGate";
 import { SITUATIONS, type SituationId } from "@/data/cards";
 import { clientId } from "@/lib/storage";
-import { roomFetch, type RoomState } from "@/lib/room";
+import { normalizeMember } from "@/lib/names";
+import { roomFetch, roomGet, type RoomState } from "@/lib/room";
 
 function Inner() {
   const router = useRouter();
@@ -32,9 +33,20 @@ function Inner() {
     }
   }
 
+  useEffect(() => {
+    if (!room) return;
+    const t = setInterval(() => {
+      roomGet(room.code).then((r) => {
+        if (r) setRoom(r);
+      });
+    }, 1500);
+    return () => clearInterval(t);
+  }, [room?.code]);
+
   if (room) {
     const join = `${origin}/participants?code=${room.code}`;
     const sit = SITUATIONS.find((s) => s.id === room.situationId);
+    const people = room.members.filter((m) => m.role !== "hote").map(normalizeMember);
     return (
       <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-12">
         <Brand compact />
@@ -51,6 +63,29 @@ function Inner() {
             className="mx-auto mt-6 bg-white p-3"
             src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(join)}`}
           />
+          {people.length ? (
+            <ul className="mt-6 space-y-2 border-t border-[var(--line)] pt-4">
+              {people.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span>
+                    {p.firstName} {(p.lastName || "").toUpperCase()}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-xs text-[#C0392B]"
+                    onClick={async () => {
+                      if (!window.confirm(`Retirer ${p.firstName} ?`)) return;
+                      setRoom(await roomFetch({ type: "kick", code: room.code, clientId: clientId(), targetId: p.id }));
+                    }}
+                  >
+                    Retirer
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-6 text-center text-xs text-[var(--muted)]">En attente de participant(e)s…</p>
+          )}
           <div className="mt-8 flex flex-col gap-3">
             <button
               type="button"
@@ -59,6 +94,9 @@ function Inner() {
             >
               Ouvrir la fresque
             </button>
+            <Link href={`/formateur/emargement?code=${room.code}`} className="flex min-h-12 items-center justify-center border border-[var(--line)] text-sm font-semibold">
+              Feuille d’émargement
+            </Link>
             <Link href={`/formateur/corrige?situation=${room.situationId}`} className="flex min-h-12 items-center justify-center border border-[var(--line)] text-sm font-semibold">
               Ouvrir le corrigé
             </Link>

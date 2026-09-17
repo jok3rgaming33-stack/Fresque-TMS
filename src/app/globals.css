@@ -279,6 +279,15 @@ body {
   opacity: 0.8;
 }
 
+@media print {
+  header,
+  .print\:hidden,
+  .board-chrome,
+  button {
+    display: none !important;
+  }
+}
+
 @media (min-width: 640px) and (max-width: 1023px) {
   .mini-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
