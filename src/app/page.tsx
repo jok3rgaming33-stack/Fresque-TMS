@@ -6,7 +6,7 @@ import { setAppRole } from "@/lib/role";
 
 export default function HomePage() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-12">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-x-hidden px-4 py-10">
       <div className="pointer-events-none absolute inset-y-0 right-[-8%] hidden w-[42%] opacity-25 lg:block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/perso.jpg" alt="" className="h-full w-full object-contain object-right" />

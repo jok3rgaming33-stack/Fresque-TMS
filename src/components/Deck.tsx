@@ -29,17 +29,16 @@ export default function Deck({
       {[...families.entries()].map(([fam, list]) => (
         <section key={fam}>
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">{fam}</h2>
-          <div className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:overflow-visible">
+          <div className="grid grid-cols-1 gap-2">
             {list.map((c) => (
-              <div key={c.id} className="min-w-[220px] md:min-w-0">
-                <CardChip
-                  card={c}
-                  selected={selectedId === c.id}
-                  heldBy={lock?.cardId === c.id ? members?.find((m) => m.id === lock.by)?.name : null}
-                  blinking={blinkingId === c.id}
-                  onClick={() => onSelect(c.id)}
-                />
-              </div>
+              <CardChip
+                key={c.id}
+                card={c}
+                selected={selectedId === c.id}
+                heldBy={lock?.cardId === c.id ? members?.find((m) => m.id === lock.by)?.name : null}
+                blinking={blinkingId === c.id}
+                onClick={() => onSelect(c.id)}
+              />
             ))}
           </div>
         </section>

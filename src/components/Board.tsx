@@ -44,7 +44,6 @@ export default function Board({
   const [message, setMessage] = useState<string | null>(MESSAGES.start);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [understood, setUnderstood] = useState<string[]>([]);
-  const [scale, setScale] = useState(1);
   const [tableNames, setTableNames] = useState<string[]>(["Léa", "Sam"]);
   const [actor, setActor] = useState("Léa");
   const [room, setRoom] = useState<RoomState | null>(initialRoom ?? null);
@@ -186,39 +185,41 @@ export default function Board({
   const projection = hostView && room?.projection;
 
   return (
-    <div className="min-h-screen px-3 py-4 md:px-6">
+    <div className="board-page">
+      <div className="board-chrome">
       {!projection ? (
-        <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <button type="button" onClick={() => router.push(hostView ? "/formateur" : "/")} className="min-h-11 text-sm text-[var(--muted)]">
-            ← {hostView ? "Espace formateur" : "Accueil"}
-          </button>
-          <div className="text-center">
-            <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--gold)]">
-              Fresque N° {situation.fresque}
-            </p>
-            <p className="font-serif text-lg">{situation.short}</p>
+        <header className="board-header mb-2">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => router.push(hostView ? "/formateur" : "/")} className="min-h-11 shrink-0 text-sm text-[var(--muted)]">
+              ← Accueil
+            </button>
+            <div className="min-w-0 flex-1 text-center">
+              <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--gold)]">Fresque N° {situation.fresque}</p>
+              <p className="truncate font-serif text-lg">{situation.short}</p>
+            </div>
+            <span className="inline-block w-14 shrink-0" />
           </div>
-          <div className="flex gap-2">
-            {hostView ? (
-              <button type="button" onClick={() => router.push(`/formateur/corrige?situation=${situation.id}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">
-                Corrigé
-              </button>
-            ) : null}
-            {hostView ? (
-              <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
-                {theme === "dark" ? "Clair" : "Sombre"}
-              </button>
-            ) : null}
-            {hostView || variant !== "room" ? (
+          {hostView || variant !== "room" ? (
+            <div className="flex flex-wrap justify-center gap-2">
+              {hostView ? (
+                <button type="button" onClick={() => router.push(`/formateur/corrige?situation=${situation.id}`)} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                  Corrigé
+                </button>
+              ) : null}
+              {hostView ? (
+                <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="min-h-11 border border-[var(--line)] px-3 text-sm">
+                  {theme === "dark" ? "Clair" : "Sombre"}
+                </button>
+              ) : null}
               <button type="button" onClick={reset} className="min-h-11 border border-[var(--line)] px-3 text-sm">
                 Recommencer
               </button>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </header>
       ) : null}
 
-      <p className="text-center font-serif text-xl md:text-2xl">{KIND_LABEL[liveKind]}</p>
+      <p className="text-center font-serif text-lg leading-snug md:text-2xl">{KIND_LABEL[liveKind]}</p>
       <div className="mx-auto mt-2 h-1.5 max-w-md overflow-hidden bg-white/10">
         <div className="h-full bg-[var(--gold)]" style={{ width: `${(placedCount / Math.max(total, 1)) * 100}%` }} />
       </div>
@@ -226,7 +227,7 @@ export default function Board({
         {placedCount} / {total}
         {room ? ` · ${room.code} · ${members.length} présents` : ""}
       </p>
-      {liveMessage ? <p className="mx-auto mt-3 max-w-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-center text-sm">{liveMessage}</p> : null}
+      {liveMessage ? <p className="mx-auto mt-2 max-w-2xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-center text-sm">{liveMessage}</p> : null}
 
       {variant === "table" && hostView ? (
         <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -270,7 +271,7 @@ export default function Board({
             {members.find((m) => m.id === proposal.by)?.name} propose « {proposalCard.title} »
             {hostView ? ` → ${proposal.zoneId}` : " sur une zone du corps"}
           </p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
               className="min-h-11 flex-1 bg-[var(--green)] font-bold text-[#0f1a12]"
@@ -303,20 +304,10 @@ export default function Board({
           {members.find((m) => m.id === lock.by)?.name} tient {cardById(lock.cardId)?.title}
         </p>
       ) : null}
+      </div>
 
-      {selected && !projection ? (
-        <div className="mx-auto mt-4 max-w-sm lg:hidden">
-          <CardDetailSheet
-            card={selected}
-            placedZone={livePlacements[selected.id]}
-            revealZones={Boolean(room?.revealZones) || Boolean(hostView)}
-            onClose={() => setSelectedId(null)}
-          />
-        </div>
-      ) : null}
-
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(280px,520px)_minmax(260px,1fr)]">
-        <aside className={`${projection ? "hidden" : ""} order-2 lg:order-1`}>
+      <div className="board-stage mt-3">
+        <aside className={`board-deck ${projection ? "hidden" : ""}`}>
           {liveKind !== "done" ? (
             <Deck
               cards={remaining}
@@ -329,15 +320,7 @@ export default function Board({
           ) : null}
         </aside>
 
-        <section className="order-1 lg:order-2">
-          <div className="mb-2 flex justify-center gap-2 lg:hidden">
-            <button type="button" className="min-h-11 bg-white/10 px-3" onClick={() => setScale((s) => Math.max(1, s - 0.25))}>
-              −
-            </button>
-            <button type="button" className="min-h-11 bg-white/10 px-3" onClick={() => setScale((s) => Math.min(2.5, s + 0.25))}>
-              +
-            </button>
-          </div>
+        <section className="board-body">
           <BodyMap
             selected={selected}
             placements={livePlacements}
@@ -347,12 +330,10 @@ export default function Board({
             debug={debug && Boolean(hostView)}
             onZone={chooseZone}
             onPin={(id) => setSelectedId(id)}
-            projection={projection}
-            scale={scale}
           />
         </section>
 
-        <aside className={`${projection ? "hidden" : ""} order-3 hidden lg:block`}>
+        <aside className={`board-preview ${projection ? "hidden" : ""}`}>
           {selected ? (
             <CardDetailSheet
               card={selected}
@@ -374,29 +355,30 @@ export default function Board({
               }
             />
           ) : (
-            <p className="border border-[var(--line)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">{MESSAGES.help}</p>
+            <p className="hidden border border-[var(--line)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)] lg:block">{MESSAGES.help}</p>
           )}
         </aside>
       </div>
 
+      <div className="board-footer">
       {(complete || room?.stepReady) && liveKind !== "done" ? (
-        <div className="mt-6 flex justify-center">
-          <button type="button" onClick={continueStep} className="min-h-12 bg-[var(--gold)] px-8 text-base font-bold text-[#1a140c]">
+        <div className="mt-3 flex justify-center">
+          <button type="button" onClick={continueStep} className="min-h-12 w-full max-w-md bg-[var(--gold)] px-8 text-base font-bold text-[#1a140c]">
             {continueLabel(liveKind)}
           </button>
         </div>
       ) : null}
 
       {liveKind === "done" ? (
-        <div className="mt-6 flex justify-center">
-          <button type="button" onClick={() => router.push(room ? `/fresque?code=${room.code}` : "/fresque")} className="min-h-12 bg-[var(--gold)] px-8 font-bold text-[#1a140c]">
+        <div className="mt-3 flex justify-center">
+          <button type="button" onClick={() => router.push(room ? `/fresque?code=${room.code}` : "/fresque")} className="min-h-12 w-full max-w-md bg-[var(--gold)] px-8 font-bold text-[#1a140c]">
             Voir la fresque
           </button>
         </div>
       ) : null}
 
       {hostView && room ? (
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
           <button className="min-h-11 bg-white/10 px-4" onClick={() => roomFetch({ type: "toggle-mode", code: room.code, clientId: me }).then(setRoom)}>
             Mode {room.mode === "atelier" ? "Guidé" : "Atelier"}
           </button>
@@ -411,6 +393,7 @@ export default function Board({
           </button>
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

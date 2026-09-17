@@ -12,8 +12,6 @@ export default function BodyMap({
   debug,
   onZone,
   onPin,
-  projection,
-  scale,
 }: {
   selected: Card | null;
   placements: Record<string, ZoneId>;
@@ -27,12 +25,13 @@ export default function BodyMap({
   scale?: number;
 }) {
   return (
-    <div
-      className="relative mx-auto w-full max-w-[520px] origin-top"
-      style={{ transform: scale && scale !== 1 ? `scale(${scale})` : undefined }}
-    >
+    <div className="relative mx-auto w-full max-w-[min(100%,520px)] overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/perso.jpg" alt="Personnage technicien" className="mx-auto block h-auto w-full max-h-[62vh] object-contain md:max-h-[78vh]" />
+      <img
+        src="/perso.jpg"
+        alt="Personnage technicien"
+        className="mx-auto block h-auto w-full max-h-[38vh] object-contain lg:max-h-[78vh]"
+      />
       {ZONES.map((z) => (
         <button
           key={z.id}
@@ -75,7 +74,6 @@ export default function BodyMap({
           }}
         />
       ) : null}
-      {projection ? null : null}
     </div>
   );
 }

@@ -38,12 +38,12 @@ function Inner() {
     return (
       <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-12">
         <Brand compact />
-        <div className="mt-10 border border-[var(--line)] bg-[var(--panel)] p-8">
+        <div className="mt-10 border border-[var(--line)] bg-[var(--panel)] p-5 sm:p-8">
           <p className="text-center text-[11px] uppercase tracking-[0.3em] text-[var(--gold)]">Salle ouverte</p>
           <p className="mt-2 text-center text-sm text-[var(--muted)]">
             Fresque N° {sit?.fresque} — {sit?.title}
           </p>
-          <p className="mt-4 text-center font-serif text-6xl tracking-[0.28em]">{room.code}</p>
+          <p className="mt-4 break-all text-center font-serif text-5xl tracking-[0.18em] sm:text-6xl sm:tracking-[0.28em]">{room.code}</p>
           <p className="mt-3 text-center text-sm text-[var(--muted)]">Les participant(e)s scannent le QR ou saisissent ce code.</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
