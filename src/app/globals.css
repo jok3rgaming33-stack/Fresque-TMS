@@ -171,6 +171,53 @@ body {
   font-weight: 800;
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
 }
+.body-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.org-drop {
+  position: relative;
+  width: min(100%, 280px);
+  padding: 10px 12px;
+  border: 2px dashed rgb(212 175 122 / 0.35);
+  background: rgb(212 175 122 / 0.06);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.org-drop.armed,
+.org-drop.drop-ok {
+  border-style: solid;
+  border-color: rgb(240 217 176 / 0.9);
+  background: rgb(212 175 122 / 0.16);
+}
+.org-drop-kicker {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.org-drop-title {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-serif), Fraunces, Georgia, serif;
+  font-size: 1.05rem;
+}
+.org-drop-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.org-badge {
+  top: 10px;
+  right: 10px;
+  left: auto;
+  transform: none;
+}
 .board-body-img {
   display: block;
   width: auto;
@@ -453,6 +500,15 @@ html.dragging-card body {
   }
   .board-body-img {
     max-height: 72vh;
+  }
+  .body-layout {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+  .org-drop {
+    width: 220px;
   }
   .mini-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
