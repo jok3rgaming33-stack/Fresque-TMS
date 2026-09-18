@@ -12,7 +12,9 @@ export function isCorrectPlacement(card: Card, zoneId: ZoneId, placements?: Reco
 }
 
 export function isStepComplete(kind: Kind, placements: Record<string, ZoneId>, situation?: string | null) {
-  return uniqueCardsOf(kind, situation).every((c) =>
+  const needed = uniqueCardsOf(kind, situation);
+  if (needed.length === 0) return false;
+  return needed.every((c) =>
     Object.entries(placements).some(([id, zone]) => {
       const placed = resolveCard(id);
       return placed && placed.title === c.title && placed.kind === kind && c.zones.includes(zone);

@@ -58,6 +58,7 @@ export default function Board({
   const [hoverZone, setHoverZone] = useState<ZoneId | null>(null);
   const [inspectZone, setInspectZone] = useState<ZoneId | null>(null);
   const [soloDebrief, setSoloDebrief] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
   const pressRef = useRef<{
     cardId: string;
     x: number;
@@ -195,9 +196,12 @@ export default function Board({
   const uniques = uniqueCardsOf(stepKind, situationId);
   const total = uniques.length;
   const placedCount = uniques.filter((c) =>
-    Object.keys(livePlacements).some((id) => resolveCard(id)?.title === c.title),
+    Object.keys(livePlacements).some((id) => {
+      const placed = resolveCard(id);
+      return placed && placed.title === c.title && placed.kind === stepKind;
+    }),
   ).length;
-  const complete = liveKind !== "done" && isStepComplete(liveKind, livePlacements, situationId);
+  const complete = liveKind !== "done" && remaining.length === 0 && uniques.length > 0 && isStepComplete(liveKind, livePlacements, situationId);
   const members: Member[] = room?.members ?? tableNames.map((n, i) => ({ id: n, name: n, color: "#3D9A5F", role: i === 0 ? "hote" : "collaborateur" }));
 
   function flash(id: string) {
@@ -369,11 +373,14 @@ export default function Board({
   }, []);
 
   function continueStep() {
+    if (advancing) return;
     if (liveKind === "done") {
       router.push(room ? `/fresque?code=${room.code}` : "/fresque");
       return;
     }
+    if (remaining.length > 0) return;
     const n = nextKind(liveKind);
+    setAdvancing(true);
     setKind(n);
     setMessage(stepMessage(n));
     setSelectedId(null);
@@ -383,7 +390,7 @@ export default function Board({
           ? {
               ...r,
               kind: n,
-              stepReady: n === "done",
+              stepReady: false,
               lock: null,
               proposal: null,
               message: stepMessage(n),
@@ -396,9 +403,11 @@ export default function Board({
           const rank: Record<string, number> = { symptome: 0, cause: 1, prevention: 2, done: 3 };
           if (rank[next.kind] >= rank[n]) setRoom(next);
         })
-        .catch(() => undefined);
+        .catch(() => undefined)
+        .finally(() => setAdvancing(false));
+    } else {
+      setAdvancing(false);
     }
-    if (n === "done") router.push(room ? `/fresque?code=${room.code}` : "/fresque");
   }
 
   const demo = room?.code === DEMO_CODE;
@@ -420,6 +429,12 @@ export default function Board({
   function reset() {
     if (variant === "room" && room) {
       if (!hostView && !demo) return;
+      try {
+        localStorage.removeItem(`fresque-tms-room-${room.code}`);
+      } catch {
+        /* ignore */
+      }
+      restoredRef.current = true;
       roomFetch({ type: "restart-all", code: room.code, clientId: me }).then(setRoom);
       return;
     }
@@ -737,7 +752,7 @@ export default function Board({
       </div>
 
       <div className="board-footer">
-      {(complete || room?.stepReady) && liveKind !== "done" ? (
+      {complete && !advancing ? (
         <div className="mt-3 flex justify-center">
           <button type="button" onClick={continueStep} className="min-h-12 w-full max-w-md bg-[var(--gold)] px-8 text-base font-bold text-[#1a140c]">
             {continueLabel(liveKind)}

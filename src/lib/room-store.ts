@@ -144,6 +144,9 @@ export function mutate(action: RoomAction): RoomState {
       rooms.set(code, restored);
       return restored;
     }
+    if (existing.createdAt && snap.createdAt && existing.createdAt !== snap.createdAt) {
+      return existing;
+    }
     if (!isHost(existing, action.clientId) && existing.members.length > 0) return existing;
     const members = [...existing.members];
     for (const m of snap.members || []) {
